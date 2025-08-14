@@ -1,0 +1,22 @@
+@import '../../shared/auth.styles.scss';
+
+// Login-specific styles
+.login-container {
+  @extend .auth-container;
+}
+
+.login-card {
+  @extend .auth-card;
+}
+
+.login-header {
+  @extend .auth-header;
+}
+
+.login-form {
+  @extend .auth-form;
+}
+
+.signup-link {
+  @extend .auth-links;
+}

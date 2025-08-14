@@ -1,0 +1,120 @@
+<nav class="navbar">
+  <div class="navbar-container">
+    <!-- Logo -->
+    <div class="navbar-logo">
+      <i class="fas fa-heartbeat"></i>
+      <span>ChifaaCare</span>
+    </div>
+
+    <!-- Navigation Links -->
+    <div class="navbar-links">
+      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">Home</a>
+      <a routerLink="/about" routerLinkActive="active">About</a>
+      <a routerLink="/services" routerLinkActive="active">Services</a>
+      <a routerLink="/team" routerLinkActive="active">Team</a>
+      <a routerLink="/contact" routerLinkActive="active">Contact</a>
+    </div>
+
+    <!-- Auth Buttons -->
+    <div class="navbar-auth" *ngIf="!isAuthenticated$">
+      <button class="signup-btn" (click)="openSignupModal()">
+        <i class="fas fa-user-plus"></i>
+        Sign Up
+      </button>
+      <button class="login-btn" (click)="openLoginModal()">
+        <i class="fas fa-user"></i>
+        Login
+      </button>
+    </div>
+
+    <!-- User Menu -->
+    <div class="user-menu" *ngIf="isAuthenticated$">
+      <div class="user-info" (click)="toggleMenu()">
+        <span class="user-name">{{ (currentUser$ | async)?.full_name }}</span>
+        <span class="user-role">{{ (currentUser$ | async)?.role }}</span>
+        <i class="fas fa-chevron-down"></i>
+      </div>
+      
+      <div class="dropdown-menu" [class.active]="isMenuOpen">
+        <button class="dashboard-btn" (click)="navigateToDashboard(); toggleMenu()">
+          <i class="fas fa-tachometer-alt"></i>
+          Dashboard
+        </button>
+        <button class="logout-btn" (click)="logout(); toggleMenu()">
+          <i class="fas fa-sign-out-alt"></i>
+          Logout
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile Menu Toggle -->
+    <div class="navbar-toggle" (click)="toggleMenu()">
+      <span></span>
+      <span></span>
+      <span></span>
+    </div>
+  </div>
+
+  <!-- Mobile Menu -->
+  <div class="mobile-menu" [class.active]="isMenuOpen">
+    <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" (click)="toggleMenu()">Home</a>
+    <a routerLink="/about" routerLinkActive="active" (click)="toggleMenu()">About</a>
+    <a routerLink="/services" routerLinkActive="active" (click)="toggleMenu()">Services</a>
+    <a routerLink="/team" routerLinkActive="active" (click)="toggleMenu()">Team</a>
+    <a routerLink="/contact" routerLinkActive="active" (click)="toggleMenu()">Contact</a>
+    
+    <!-- Mobile Auth -->
+    <div class="mobile-auth" *ngIf="!isAuthenticated$">
+      <button class="mobile-signup-btn" (click)="openSignupModal(); toggleMenu()">
+        <i class="fas fa-user-plus"></i>
+        Sign Up
+      </button>
+      <button class="mobile-login-btn" (click)="openLoginModal(); toggleMenu()">
+        <i class="fas fa-user"></i>
+        Login
+      </button>
+    </div>
+
+    <!-- Mobile User Menu -->
+    <div class="mobile-user-menu" *ngIf="isAuthenticated$">
+      <div class="mobile-user-info">
+        <span class="mobile-user-name">{{ (currentUser$ | async)?.full_name }}</span>
+        <span class="mobile-user-role">{{ (currentUser$ | async)?.role }}</span>
+      </div>
+      <button class="mobile-dashboard-btn" (click)="navigateToDashboard(); toggleMenu()">
+        <i class="fas fa-tachometer-alt"></i>
+        Dashboard
+      </button>
+      <button class="mobile-logout-btn" (click)="logout(); toggleMenu()">
+        <i class="fas fa-sign-out-alt"></i>
+        Logout
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- Login Modal -->
+<div class="modal-overlay" *ngIf="isLoginModalOpen" (click)="closeLoginModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Login</h2>
+      <button class="close-btn" (click)="closeLoginModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <app-login (loginSuccess)="onLoginSuccess()" (authError)="onAuthError()"></app-login>
+  </div>
+</div>
+
+<!-- Signup Modal -->
+<div class="modal-overlay" *ngIf="isSignupModalOpen" (click)="closeSignupModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Sign Up</h2>
+      <button class="close-btn" (click)="closeSignupModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <app-signup (signupSuccess)="onSignupSuccess()" (authError)="onAuthError()"></app-signup>
+  </div>
+</div>
