@@ -1,0 +1,49 @@
+<!-- Nurse Noura Chatbot UI -->
+<div class="chat-launcher">
+  <button class="chat-bubble-btn" (click)="open()" aria-label="Open chat with Nurse Noura">
+    <svg class="icon-plane" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+    </svg>
+  </button>
+</div>
+
+<section class="chat-window" [class.open]="isOpen" aria-live="polite" aria-label="Nurse Noura chat window">
+  <header class="chat-header">
+    <div class="nurse-avatar" aria-hidden="true">
+      <svg viewBox="0 0 64 64">
+        <circle cx="32" cy="32" r="30" fill="#fff"/>
+        <circle cx="32" cy="26" r="10" fill="#f8c9c9"/>
+        <rect x="18" y="40" width="28" height="14" rx="7" fill="#a0d8ef"/>
+        <path d="M22 18h20l-2 8H24l-2-8z" fill="#ffffff" stroke="#a0d8ef" stroke-width="2"/>
+        <rect x="30" y="20" width="4" height="4" rx="1" fill="#ff6b6b"/>
+      </svg>
+    </div>
+    <div class="chat-title">
+      Nurse Noura
+      <svg class="heartbeat" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12.1 21.55l-.1.1-.11-.1C7.14 17.24 4 14.39 4 11.28A4.79 4.79 0 0 1 8.86 6.5c1.5 0 2.93.7 3.24 1.76.31-1.06 1.74-1.76 3.24-1.76A4.79 4.79 0 0 1 20 11.28c0 3.11-3.14 5.96-7.9 10.27z"/>
+      </svg>
+    </div>
+    <button class="chat-bubble-btn close-btn" (click)="close()" aria-label="Close chat">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="#0b3d4f" aria-hidden="true">
+        <path d="M18.3 5.71L12 12.01l-6.3-6.3-1.4 1.41 6.3 6.29-6.3 6.3 1.4 1.41L12 14.83l6.29 6.29 1.41-1.41-6.3-6.3 6.3-6.29z"/>
+      </svg>
+    </button>
+  </header>
+
+  <div class="chat-body" #chatBody>
+    <div *ngFor="let m of messages" class="msg" [ngClass]="m.sender">{{ m.text }}</div>
+    <div class="typing" *ngIf="typing">
+      <span class="dot" aria-hidden="true"></span>
+      <span class="dot" aria-hidden="true"></span>
+      <span class="dot" aria-hidden="true"></span>
+    </div>
+  </div>
+
+  <div class="chat-input">
+    <input #inputEl [(ngModel)]="inputText" (keydown)="onKeyDown($event)" class="input-field" type="text" placeholder="Ask Nurse Noura..." aria-label="Type your message" />
+    <button class="send-btn" (click)="onSend()" aria-label="Send message">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+    </button>
+  </div>
+</section>

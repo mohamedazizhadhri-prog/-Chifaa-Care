@@ -1,0 +1,196 @@
+<div class="modal-overlay" [class.active]="isOpen" (click)="!showBadge && onCloseModal()">
+  <div class="modal-content" [ngClass]="authMode" [class.fade-out]="showBadge" (click)="$event.stopPropagation()">
+    <!-- Close Button -->
+    <button class="modal-close" (click)="onCloseModal()">
+      <i class="fas fa-times"></i>
+    </button>
+
+    <!-- Small themed visual -->
+    <div class="modal-visual" aria-hidden="true">
+      <svg *ngIf="authMode === 'login'" class="visual-login" viewBox="0 0 200 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path class="ecg" d="M0 20 H40 L50 30 L60 10 L70 28 L85 20 H115 L125 30 L135 12 L145 28 L160 20 H200" stroke="url(#grad)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <defs>
+          <linearGradient id="grad" x1="0" y1="0" x2="200" y2="0" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#2563eb"/>
+            <stop offset="1" stop-color="#10b981"/>
+          </linearGradient>
+        </defs>
+      </svg>
+
+      <div *ngIf="authMode === 'signup'" class="visual-signup">
+        <span class="medical-cross" aria-hidden="true"></span>
+      </div>
+    </div>
+
+    <!-- Modal Header -->
+    <div class="modal-header">
+      <h2>{{ authMode === 'login' ? 'Welcome Back' : 'Create an Account' }}</h2>
+      <p>{{ authMode === 'login' ? 'Sign in to your ChifaaCare account' : 'Join our community of patients and doctors' }}</p>
+    </div>
+    <div class="modal-body">
+      <!-- Tabs for Login/Signup -->
+      <div class="auth-tabs">
+        <button 
+          class="tab-btn" 
+          [class.active]="authMode === 'login'"
+          (click)="switchMode('login')">
+          Login
+        </button>
+        <button 
+          class="tab-btn" 
+          [class.active]="authMode === 'signup'"
+          (click)="switchMode('signup')">
+          Sign Up
+        </button>
+      </div>
+
+      <!-- Role Selection -->
+      <div class="role-tabs" *ngIf="authMode === 'signup'">
+        <button 
+          class="tab-btn" 
+          [class.active]="selectedRole === 'patient'"
+          (click)="selectRole('patient')">
+          <i class="fas fa-user"></i>
+          Patient
+        </button>
+        <button 
+          class="tab-btn" 
+          [class.active]="selectedRole === 'doctor'"
+          (click)="selectRole('doctor')">
+          <i class="fas fa-user-md"></i>
+          Doctor
+        </button>
+      </div>
+
+      <!-- Login Form -->
+      <form class="auth-form" *ngIf="authMode === 'login'" (ngSubmit)="onSubmit(loginForm, undefined)" #loginForm="ngForm">
+        <div class="form-group">
+          <label for="login-email">Email</label>
+          <input 
+            type="email" 
+            id="login-email" 
+            name="email"
+            [(ngModel)]="loginData.email"
+            required
+            email
+            placeholder="Enter your email">
+        </div>
+
+        <div class="form-group">
+          <label for="login-password">Password</label>
+          <input 
+            type="password" 
+            id="login-password" 
+            name="password"
+            [(ngModel)]="loginData.password"
+            required
+            minlength="6"
+            placeholder="Enter your password">
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="submit-btn" [disabled]="!loginForm.form.valid || isLoading" [class.morph]="showBadge">
+            <i class="fas fa-sign-in-alt"></i>
+            {{ isLoading ? 'Signing in...' : 'Sign In' }}
+          </button>
+        </div>
+      </form>
+
+      <!-- Signup Form -->
+      <form class="auth-form" *ngIf="authMode === 'signup'" (ngSubmit)="onSubmit(undefined, signupForm)" #signupForm="ngForm">
+        <div class="form-group">
+          <label for="signup-name">Full Name</label>
+          <input 
+            type="text" 
+            id="signup-name" 
+            name="name"
+            [(ngModel)]="signupData.name"
+            required
+            placeholder="Enter your full name">
+        </div>
+
+        <div class="form-group">
+          <label for="signup-email">Email</label>
+          <input 
+            type="email" 
+            id="signup-email" 
+            name="email"
+            [(ngModel)]="signupData.email"
+            required
+            email
+            placeholder="Enter your email">
+        </div>
+
+        <div class="form-group">
+          <label for="signup-password">Password</label>
+          <input 
+            type="password" 
+            id="signup-password" 
+            name="password"
+            [(ngModel)]="signupData.password"
+            required
+            minlength="6"
+            placeholder="Create a password">
+        </div>
+
+        <div class="form-group">
+          <label for="confirm-password">Confirm Password</label>
+          <input 
+            type="password" 
+            id="confirm-password" 
+            name="confirmPassword"
+            [(ngModel)]="signupData.confirmPassword"
+            required
+            [appMatchPassword]="signupData.password"
+            placeholder="Confirm your password">
+        </div>
+
+        <div class="form-group terms-group" *ngIf="authMode === 'signup'">
+          <input 
+            type="checkbox" 
+            id="terms" 
+            name="terms"
+            [(ngModel)]="signupData.terms"
+            required>
+          <label for="terms">
+            I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>
+          </label>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="submit-btn" [disabled]="!signupForm.form.valid || isLoading" [class.morph]="showBadge">
+            <i class="fas fa-user-plus"></i>
+            {{ isLoading ? 'Creating Account...' : 'Create Account' }}
+          </button>
+        </div>
+      </form>
+
+      <!-- Error Message -->
+      <div class="error-message" *ngIf="errorMessage">
+        <i class="fas fa-exclamation-circle"></i>
+        {{ errorMessage }}
+      </div>
+    </div>
+  </div>
+
+  <!-- Global centered badge overlay (above everything inside the modal) -->
+  <div class="badge-portal" *ngIf="showBadge">
+    <div class="badge-portal__backdrop"></div>
+    <div class="badge-portal__center">
+      <div class="id-badge" [class.patient]="badgeRole==='patient'" [class.doctor]="badgeRole==='doctor'" [class.slideUp]="badgeSlideUp">
+        <div class="scanner" [class.scan]="scannerRunning"></div>
+        <div class="avatar"></div>
+        <div class="badge-info">
+          <div class="name">{{ displayName }}</div>
+          <div class="role" [class.role-patient]="badgeRole==='patient'" [class.role-doctor]="badgeRole==='doctor'">{{ badgeRole | titlecase }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Success Message -->
+  <div class="success-message" *ngIf="showSuccess">
+    <i class="fas fa-check-circle"></i>
+    <h3>{{ successMessage }}</h3>
+  </div>
+</div>

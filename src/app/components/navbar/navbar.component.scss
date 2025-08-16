@@ -1,0 +1,476 @@
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+  opacity: 0;
+  transform: translateY(-20px);
+
+  &.fade-in {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Compact hospital ID badge inside navbar (no avatar) */
+  .nav-id-badge {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: .55rem;
+    padding: .35rem .7rem .35rem .9rem;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #ffffff, #f8fafc);
+    border: 1px solid rgba(203,213,225,0.9);
+    box-shadow: 0 2px 8px rgba(2,6,23,0.08), inset 0 0 0 1px rgba(255,255,255,0.85);
+    min-height: 40px;
+  }
+  .nav-id-badge::after {
+    /* glossy sweep */
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.45), rgba(255,255,255,0));
+    pointer-events: none;
+  }
+  .nav-id-badge .strap {
+    content: "";
+    position: absolute;
+    top: -10px;
+    left: 14px;
+    width: 30px;
+    height: 10px;
+    border-radius: 6px 6px 0 0;
+    background: linear-gradient(180deg, #64748b, #475569);
+    box-shadow: 0 2px 4px rgba(2,6,23,0.2);
+  }
+  .nav-id-badge .clip {
+    position: absolute;
+    top: -4px;
+    left: 24px;
+    width: 10px;
+    height: 8px;
+    border-radius: 2px;
+    background: linear-gradient(180deg, #cbd5e1, #94a3b8);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.6);
+  }
+  .nav-id-badge .emblem {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    background: radial-gradient(circle at 30% 30%, #e0f2fe, #dbeafe);
+    border: 1px solid rgba(37,99,235,0.35);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.85), 0 1px 3px rgba(2,6,23,0.12);
+  }
+  .nav-user-badge.doctor .nav-id-badge .emblem {
+    background: radial-gradient(circle at 30% 30%, #ccfbf1, #d1fae5);
+    border-color: rgba(16,185,129,0.35);
+  }
+  .nav-id-badge .emblem .cross {
+    position: relative;
+    width: 12px;
+    height: 12px;
+    display: inline-block;
+  }
+  .nav-id-badge .emblem .cross::before,
+  .nav-id-badge .emblem .cross::after {
+    content: "";
+    position: absolute;
+    background: #2563eb;
+    border-radius: 2px;
+  }
+  .nav-id-badge .emblem .cross::before { /* vertical */
+    left: 5px; top: 0; width: 2px; height: 12px;
+  }
+  .nav-id-badge .emblem .cross::after { /* horizontal */
+    left: 0; top: 5px; width: 12px; height: 2px;
+  }
+  .nav-user-badge.doctor .nav-id-badge .emblem .cross::before,
+  .nav-user-badge.doctor .nav-id-badge .emblem .cross::after { background: #0f766e; }
+  .nav-id-badge .id-lines { display:flex; flex-direction:column; line-height:1.05; }
+  .nav-id-badge .id-name { font-weight: 800; color:#0f172a; font-size: .92rem; letter-spacing: .2px; }
+  .nav-id-badge .id-role { margin-top: .14rem; font-size: .72rem; font-weight: 700; width: max-content; padding: .16rem .5rem; border-radius: 999px; }
+  .nav-id-badge .id-role.patient { background: rgba(37,99,235,.12); color:#1d4ed8; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.9); }
+  .nav-id-badge .id-role.doctor { background: rgba(16,185,129,.14); color:#0f766e; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.9); }
+
+  /* overlay/badge styles moved to top-level */
+
+  &.scrolled {
+    background: rgba(255, 255, 255, 0.98);
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+  }
+
+  .navbar-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 80px;
+
+    @media (max-width: 768px) {
+      padding: 0 1rem;
+      height: 70px;
+    }
+  }
+
+  .navbar-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #2563eb;
+    text-decoration: none;
+
+    i {
+      font-size: 1.8rem;
+      color: #10b981;
+    }
+
+    span {
+      background: linear-gradient(135deg, #2563eb, #10b981);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+  }
+
+  .navbar-links {
+    display: flex;
+    gap: 2rem;
+    align-items: center;
+
+    @media (max-width: 768px) {
+      display: none;
+    }
+
+    a {
+      color: #374151;
+      text-decoration: none;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      position: relative;
+
+      &:hover {
+        color: #2563eb;
+      }
+
+      &.active {
+        color: #2563eb;
+        
+        &::after {
+          content: '';
+          position: absolute;
+          bottom: -5px;
+          left: 0;
+          width: 100%;
+          height: 2px;
+          background: linear-gradient(135deg, #2563eb, #10b981);
+          border-radius: 1px;
+        }
+      }
+
+      &::after {
+        content: '';
+        position: absolute;
+        bottom: -5px;
+        left: 0;
+        width: 0;
+        height: 2px;
+        background: linear-gradient(135deg, #2563eb, #10b981);
+        transition: width 0.3s ease;
+        border-radius: 1px;
+      }
+
+      &:hover::after {
+        width: 100%;
+      }
+    }
+  }
+
+  .navbar-auth {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    @media (max-width: 768px) {
+      display: none;
+    }
+  }
+
+  /* Logged-in badge in nav */
+  .nav-user-wrap { position: relative; }
+  .nav-user-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    padding: 0.4rem 0.75rem 0.4rem 0.4rem;
+    border-radius: 999px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    cursor: pointer;
+  }
+  .nav-user-badge.patient { border-color: rgba(37,99,235,0.25); }
+  .nav-user-badge.doctor { border-color: rgba(16,185,129,0.25); }
+  .nav-user-badge .avatar { width: 34px; height: 34px; border-radius: 50%; background: #e5eef7 no-repeat center/cover; box-shadow: inset 0 0 0 2px #fff; object-fit: cover; display: block; }
+  .nav-user-badge .info { display: flex; flex-direction: column; line-height: 1; }
+  .nav-user-badge .name { font-weight: 700; font-size: .9rem; color: #1f2937; }
+  /* Hospital-style name badge next to avatar */
+  .nav-user-badge .name-badge {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .22rem .55rem .22rem .65rem;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #ffffff, #f1f5f9);
+    border: 1px solid rgba(203,213,225,0.9);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.8), 0 2px 6px rgba(2,6,23,0.08);
+  }
+  .nav-user-badge .name-badge .badge-clip {
+    position: absolute;
+    left: -8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #ffffff, #e2e8f0);
+    box-shadow: 0 0 0 2px #fff, 0 0 0 3px rgba(203,213,225,0.9);
+  }
+  .nav-user-badge.patient .name-badge { border-color: rgba(37,99,235,0.35); }
+  .nav-user-badge.doctor .name-badge { border-color: rgba(16,185,129,0.35); }
+  .nav-user-badge .name-badge .badge-icon { color: #2563eb; opacity: .9; font-size: .8rem; }
+  .nav-user-badge.doctor .name-badge .badge-icon { color: #0ea5e9; }
+  .nav-user-badge .name-badge .badge-text { font-weight: 800; font-size: .85rem; letter-spacing: .2px; color:#0f172a; }
+  .nav-user-badge .role { font-size: .72rem; color: #2563eb; opacity: .85; }
+  .nav-user-badge .caret { margin-left: .25rem; color: #6b7280; font-size: .8rem; transition: transform .2s ease; }
+  .nav-user-badge .caret.open { transform: rotate(180deg); }
+
+  .user-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    min-width: 180px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.12);
+    padding: .35rem;
+    display: flex;
+    flex-direction: column;
+    z-index: 2000;
+  }
+  .user-menu__item {
+    background: transparent;
+    border: 0;
+    text-align: left;
+    padding: .6rem .65rem;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    color: #1f2937;
+    cursor: pointer;
+  }
+  .user-menu__item i { color: #6b7280; width: 16px; text-align: center; }
+  .user-menu__item:hover { background: #f9fafb; }
+  .user-menu__item.danger { color: #b91c1c; }
+  .user-menu__item.danger i { color: #ef4444; }
+
+  .login-btn {
+    background: linear-gradient(135deg, #2563eb, #10b981);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 25px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+    }
+
+    i {
+      font-size: 0.9rem;
+    }
+  }
+
+  .signup-btn {
+    background: white;
+    color: #2563eb;
+    border: 2px solid #2563eb;
+    padding: 0.65rem 1.3rem;
+    border-radius: 25px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    &:hover {
+      background: #eff6ff;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.15);
+    }
+
+    i {
+      font-size: 0.9rem;
+      color: #2563eb;
+    }
+  }
+
+  .navbar-toggle {
+    display: none;
+    flex-direction: column;
+    cursor: pointer;
+    gap: 4px;
+
+    @media (max-width: 768px) {
+      display: flex;
+    }
+
+    span {
+      width: 25px;
+      height: 3px;
+      background: #374151;
+      border-radius: 2px;
+      transition: all 0.3s ease;
+    }
+
+    &:hover span {
+      background: #2563eb;
+    }
+  }
+
+  .mobile-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    padding: 1rem;
+    display: none;
+    flex-direction: column;
+    gap: 1rem;
+    transform: translateY(-10px);
+    opacity: 0;
+    transition: all 0.3s ease;
+
+    &.active {
+      display: flex;
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    a {
+      color: #374151;
+      text-decoration: none;
+      font-weight: 500;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+
+      &:hover {
+        background: #f3f4f6;
+        color: #2563eb;
+      }
+
+      &.active {
+        background: #eff6ff;
+        color: #2563eb;
+      }
+    }
+
+    .mobile-login-btn {
+      background: linear-gradient(135deg, #2563eb, #10b981);
+      color: white;
+      border: none;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+
+    .mobile-signup-btn {
+      background: white;
+      color: #2563eb;
+      border: 2px solid #2563eb;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+  }
+}
+
+/* Global auth animation overlay (outside nav scope) */
+.auth-badge-portal { position: fixed; inset: 0; display:grid; place-items:center; z-index: 5000; pointer-events: none; }
+.auth-badge-portal__backdrop { position:absolute; inset:0; background: radial-gradient(ellipse at center, rgba(241,245,249,0.9), rgba(241,245,249,0.6)); backdrop-filter: blur(6px) saturate(110%); }
+.auth-badge-portal__center { position: relative; z-index: 1; pointer-events: none; display:grid; place-items:center; padding: 1rem; }
+
+/* Premium ID badge */
+.id-badge { position:relative; width: min(92vw, 400px); padding: 1rem 1.2rem 1rem 4.6rem; border-radius: 18px; 
+  background: linear-gradient(180deg, rgba(255,255,255,0.88), rgba(255,255,255,0.78));
+  border: 1px solid rgba(30,64,175,0.14);
+  box-shadow: 0 18px 50px rgba(15,23,42,0.18), inset 0 1px 0 rgba(255,255,255,0.5);
+  overflow:hidden; transform-origin:center; transition: transform .35s ease, opacity .35s ease;
+}
+.id-badge.patient { background: linear-gradient(180deg, rgba(240,249,255,0.95), rgba(232,244,255,0.85)); border-color: rgba(37,99,235,0.22); }
+.id-badge.doctor { background: linear-gradient(180deg, rgba(236,253,245,0.95), rgba(226,250,240,0.85)); border-color: rgba(16,185,129,0.22); }
+.id-badge::before { content:""; position:absolute; inset:-1px; border-radius: 18px; background: linear-gradient(135deg, rgba(59,130,246,0.12), rgba(16,185,129,0.12)); pointer-events:none; }
+.id-badge::after { content:""; position:absolute; top:-60%; left:-20%; width: 140%; height: 80%; background: radial-gradient(ellipse at top left, rgba(255,255,255,0.65), rgba(255,255,255,0)); transform: rotate(8deg); }
+
+.scanner { position:absolute; left:10px; right:10px; top:-18%; height: 14px; border-radius: 8px; 
+  background: linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(56,189,248,.45) 45%, rgba(255,255,255,0) 100%);
+  box-shadow: 0 0 16px rgba(56,189,248,.35); filter: blur(.2px); opacity:0;
+}
+.scanner.scan { animation: scan 1.15s ease-in-out forwards; }
+@keyframes scan { 0% { top:-16%; opacity:.0; } 10% { opacity:1; } 100% { top: 100%; opacity:.0; } }
+
+.avatar { position:absolute; left: 1rem; top:50%; transform: translateY(-50%); width: 60px; height:60px; border-radius:16px; 
+  background: #e5eef7 no-repeat center/cover; box-shadow: 0 10px 22px rgba(2,6,23,0.12), inset 0 0 0 3px rgba(255,255,255,0.9);
+  object-fit: cover; display: block;
+}
+.avatar::after { content:""; position:absolute; inset:0; border-radius:16px; background: linear-gradient(135deg, rgba(255,255,255,0.35), rgba(255,255,255,0)); pointer-events:none; }
+
+.badge-info { display:flex; flex-direction:column; gap:.2rem; }
+.name { font-weight: 800; letter-spacing: .2px; color:#0f172a; font-size:1.08rem; }
+.role { width:max-content; padding:.28rem .62rem; border-radius:999px; font-size:.72rem; font-weight:700; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.9);
+}
+.role.role-patient { background: rgba(37,99,235,.12); color:#1d4ed8; }
+.role.role-doctor { background: rgba(16,185,129,.14); color:#0f766e; }
+.id-badge.slideUp { animation: slideUp 1s ease forwards; }
+@keyframes slideUp { to { transform: translateY(-18px); opacity:.98; } }
+
+/* Enhanced nav badge visuals */
+.nav-user-badge { background: linear-gradient(180deg, #f8fafc, #f3f4f6); border: 1px solid rgba(203,213,225,0.8); }
+.nav-user-badge .avatar { border-radius: 10px; box-shadow: 0 6px 14px rgba(2,6,23,0.12), inset 0 0 0 2px #fff; }
+.nav-user-badge .name { font-weight: 800; }
+.nav-user-badge .role { font-weight: 700; opacity: .9; }
