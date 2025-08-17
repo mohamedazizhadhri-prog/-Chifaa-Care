@@ -2,12 +2,13 @@ import { Component, OnInit } from '@angular/core';
 import { RouterOutlet, Router, NavigationEnd } from '@angular/router';
 import { NavbarComponent } from './components/navbar/navbar.component';
 import { NurseNouraComponent } from './components/nurse-noura/nurse-noura.component';
+import { DnaScrollComponent } from './components/dna-scroll/dna-scroll.component';
 import { filter } from 'rxjs/operators';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, NavbarComponent, NurseNouraComponent],
+  imports: [RouterOutlet, NavbarComponent, NurseNouraComponent, DnaScrollComponent],
   template: `
     <app-navbar></app-navbar>
     <main>
@@ -15,6 +16,8 @@ import { filter } from 'rxjs/operators';
     </main>
     <!-- Global Nurse Noura Chatbot -->
     <app-nurse-noura></app-nurse-noura>
+    <!-- DNA Scroll Button -->
+    <app-dna-scroll></app-dna-scroll>
   `,
   styles: [`
     main {
