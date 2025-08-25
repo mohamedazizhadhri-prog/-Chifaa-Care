@@ -1,0 +1,146 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = "postgresql://postgres:uranya@localhost:5432/mydb?schema=public"
+}
+
+model User {
+  id                  String          @id @default(uuid())
+  email               String          @unique
+  password            String
+  firstName           String
+  lastName            String
+  phone               String?
+  dateOfBirth         DateTime?
+  gender              String?
+  profileImage        String?
+  role                String          @default("PATIENT")
+  isEmailVerified     Boolean         @default(false)
+  isActive            Boolean         @default(true)
+  lastLogin           DateTime?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  doctorAppointments  Appointment[]   @relation("DoctorAppointments")
+  patientAppointments Appointment[]   @relation("PatientAppointments")
+  doctorProfile       DoctorProfile?
+  receivedMessages    Message[]       @relation("ReceivedMessages")
+  sentMessages        Message[]       @relation("SentMessages")
+  patientProfile      PatientProfile?
+}
+
+model DoctorProfile {
+  id              String      @id @default(uuid())
+  userId          String      @unique
+  specialization  String?
+  bio             String?
+  licenseNumber   String?
+  experience      Int?
+  consultationFee Float?
+  availableDays   String      @default("[]")
+  availableHours  String      @default("[]")
+  languages       String      @default("[]")
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  user            User        @relation(fields: [userId], references: [id])
+  education       Education[]
+}
+
+model PatientProfile {
+  id                String             @id @default(uuid())
+  userId            String             @unique
+  bloodType         String?
+  height            Float?
+  weight            Float?
+  allergies         String             @default("[]")
+  medications       String             @default("[]")
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  emergencyContacts EmergencyContact[]
+  insuranceInfo     InsuranceInfo?
+  medicalHistory    MedicalHistory[]
+  user              User               @relation(fields: [userId], references: [id])
+}
+
+model Education {
+  id              String        @id @default(uuid())
+  doctorProfileId String
+  degree          String
+  institution     String
+  fieldOfStudy    String
+  startYear       Int
+  endYear         Int?
+  description     String?
+  doctorProfile   DoctorProfile @relation(fields: [doctorProfileId], references: [id])
+}
+
+model MedicalHistory {
+  id               String         @id @default(uuid())
+  patientProfileId String
+  condition        String
+  diagnosisDate    DateTime
+  status           String
+  notes            String?
+  attachments      String         @default("[]")
+  patientProfile   PatientProfile @relation(fields: [patientProfileId], references: [id])
+}
+
+model EmergencyContact {
+  id               String         @id @default(uuid())
+  patientProfileId String
+  name             String
+  relationship     String
+  phone            String
+  email            String?
+  address          String?
+  isPrimary        Boolean        @default(false)
+  patientProfile   PatientProfile @relation(fields: [patientProfileId], references: [id])
+}
+
+model InsuranceInfo {
+  id               String         @id @default(uuid())
+  patientProfileId String         @unique
+  provider         String
+  policyNumber     String
+  groupNumber      String?
+  validUntil       DateTime
+  isPrimary        Boolean        @default(true)
+  patientProfile   PatientProfile @relation(fields: [patientProfileId], references: [id])
+}
+
+model Appointment {
+  id                    String    @id @default(uuid())
+  patientId             String
+  doctorId              String
+  appointmentDate       DateTime
+  endTime               DateTime
+  status                String    @default("PENDING")
+  reason                String
+  notes                 String?
+  diagnosis             String?
+  prescription          String?
+  followUpDate          DateTime?
+  isFollowUp            Boolean   @default(false)
+  originalAppointmentId String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  doctor                User      @relation("DoctorAppointments", fields: [doctorId], references: [id])
+  patient               User      @relation("PatientAppointments", fields: [patientId], references: [id])
+  messages              Message[]
+}
+
+model Message {
+  id            String       @id @default(uuid())
+  senderId      String
+  recipientId   String
+  content       String
+  isRead        Boolean      @default(false)
+  appointmentId String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id])
+  recipient     User         @relation("ReceivedMessages", fields: [recipientId], references: [id])
+  sender        User         @relation("SentMessages", fields: [senderId], references: [id])
+}
