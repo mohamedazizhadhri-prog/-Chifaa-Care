@@ -1,0 +1,187 @@
+<!-- Main Container -->
+<div class="book-consultation-container">
+  <!-- Header Section -->
+  <header class="consultation-header">
+    <h1>Book Consultation</h1>
+    <p class="subtitle">Find the right oncologist for your needs and book your appointment instantly.</p>
+  </header>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <!-- Filters Sidebar -->
+    <aside class="filters-sidebar">
+      <div class="filter-section">
+        <h3>Filters</h3>
+        
+        <div class="form-group">
+          <label>Specialty</label>
+          <select class="form-control" [(ngModel)]="filters.specialty" (change)="applyFilters()">
+            <option value="">All Specialties</option>
+            <option *ngFor="let spec of specialties" [value]="spec">{{spec}}</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Language</label>
+          <select class="form-control" [(ngModel)]="filters.language" (change)="applyFilters()">
+            <option value="">All Languages</option>
+            <option *ngFor="let lang of languages" [value]="lang">{{lang}}</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Doctor Gender</label>
+          <select class="form-control" [(ngModel)]="filters.gender" (change)="applyFilters()">
+            <option value="">No Preference</option>
+            <option value="MALE">Male</option>
+            <option value="FEMALE">Female</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Sort By</label>
+          <select class="form-control" [(ngModel)]="filters.sortBy" (change)="sortDoctors()">
+            <option *ngFor="let opt of sortOptions" [value]="opt.value">{{opt.label}}</option>
+          </select>
+        </div>
+
+        <button class="btn btn-outline-primary btn-block" (click)="resetFilters()">Clear All Filters</button>
+      </div>
+    </aside>
+
+    <!-- Doctors List -->
+    <section class="doctors-list">
+      <div class="results-info">
+        <h3>{{filteredDoctors.length}} Doctors Available</h3>
+      </div>
+
+      <!-- Doctor Cards -->
+      <div class="doctor-cards">
+        <ng-container *ngIf="filteredDoctors.length > 0; else noResults">
+          <div class="doctor-card" *ngFor="let doctor of filteredDoctors">
+            <ng-container *ngIf="doctor.doctorProfile">
+              <div class="doctor-info">
+                <img [src]="doctor.profileImage || 'assets/images/default-doctor.png'" [alt]="getDoctorFullName(doctor)" class="doctor-photo">
+                <div class="doctor-details">
+                  <h4>{{getDoctorFullName(doctor)}} <span class="badge">{{doctor.doctorProfile.specialization}}</span></h4>
+                  <div class="meta">
+                    <span class="exp">{{doctor.doctorProfile.experience}}+ years experience</span>
+                  </div>
+                  <div class="rating">
+                    <span class="stars">
+                      <span *ngFor="let star of getStars(doctor.doctorProfile.rating)">
+                        <i *ngIf="star === 1" class="fas fa-star"></i>
+                        <i *ngIf="star === 0.5" class="fas fa-star-half-alt"></i>
+                        <i *ngIf="star === 0" class="far fa-star"></i>
+                      </span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div class="doctor-actions">
+                <button class="btn btn-outline-primary" (click)="viewProfile(doctor, doctorProfileModal)">
+                  <i class="fas fa-user-md"></i> View Profile
+                </button>
+                <button class="btn btn-primary" (click)="startBooking(doctor, bookingModal)">
+                  <i class="fas fa-calendar-plus"></i> Book Now
+                </button>
+              </div>
+            </ng-container>
+          </div>
+        </ng-container>
+
+        <!-- No Results Template -->
+        <ng-template #noResults>
+            <div class="no-results">
+                <i class="fas fa-search"></i>
+                <h4>No doctors found matching your criteria</h4>
+                <p>Try adjusting your filters or search again</p>
+            </div>
+        </ng-template>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- Doctor Profile Modal -->
+<ng-template #doctorProfileModal let-modal>
+  <ng-container *ngIf="selectedDoctor && selectedDoctor.doctorProfile">
+    <div class="modal-header">
+      <h4 class="modal-title">{{ getDoctorFullName(selectedDoctor) }}</h4>
+      <button type="button" class="close" (click)="modal.dismiss()"><span>&times;</span></button>
+    </div>
+    <div class="modal-body">
+        <p><strong>Specialization:</strong> {{ selectedDoctor.doctorProfile.specialization }}</p>
+        <p><strong>Experience:</strong> {{ selectedDoctor.doctorProfile.experience }} years</p>
+        <p><strong>Bio:</strong> {{ selectedDoctor.doctorProfile.bio }}</p>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline-secondary" (click)="modal.dismiss()">Close</button>
+      <button type="button" class="btn btn-primary" (click)="startBooking(selectedDoctor, bookingModal); modal.dismiss()">
+        Book Appointment
+      </button>
+    </div>
+  </ng-container>
+</ng-template>
+
+<!-- Booking Form Modal -->
+<ng-template #bookingModal let-modal>
+    <div class="modal-header">
+        <h4 class="modal-title">Book Appointment with {{ bookingDetails?.doctorName }}</h4>
+        <button type="button" class="close" (click)="onCloseModal(modal)" aria-label="Close">
+        <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    <div class="modal-body">
+        <div *ngIf="!bookingComplete">
+        <form [formGroup]="bookingForm" (ngSubmit)="submitBooking()">
+            <div class="form-group">
+            <label>Consultation Type</label>
+            <div class="btn-group d-flex" role="group">
+                <button type="button" class="btn btn-outline-primary" [class.active]="bookingForm.get('consultationType')?.value === ConsultationType.VIDEO" (click)="bookingForm.get('consultationType')?.setValue(ConsultationType.VIDEO)">
+                <i class="fas fa-video"></i> Video Call
+                </button>
+                <button type="button" class="btn btn-outline-primary" [class.active]="bookingForm.get('consultationType')?.value === ConsultationType.IN_PERSON" (click)="bookingForm.get('consultationType')?.setValue(ConsultationType.IN_PERSON)">
+                <i class="fas fa-hospital"></i> In-Person
+                </button>
+                <button type="button" class="btn btn-outline-primary" [class.active]="bookingForm.get('consultationType')?.value === ConsultationType.PHONE" (click)="bookingForm.get('consultationType')?.setValue(ConsultationType.PHONE)">
+                <i class="fas fa-phone"></i> Phone Call
+                </button>
+            </div>
+            </div>
+
+            <div class="row">
+            <div class="col-md-6">
+                <div class="form-group">
+                <label>Date</label>
+                <input type="date" class="form-control" formControlName="date" required>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                <label>Time</label>
+                <input type="time" class="form-control" formControlName="time" required>
+                </div>
+            </div>
+            </div>
+
+            <div class="form-group">
+            <label>Reason for Consultation</label>
+            <textarea class="form-control" rows="3" formControlName="reason" required></textarea>
+            </div>
+
+            <div class="form-actions">
+            <button type="button" class="btn btn-outline-secondary" (click)="modal.dismiss()">Cancel</button>
+            <button type="submit" class="btn btn-primary" [disabled]="bookingForm.invalid">Confirm Booking</button>
+            </div>
+        </form>
+        </div>
+
+        <div *ngIf="bookingComplete" class="booking-confirmation">
+            <div class="text-center py-4">
+                <div class="success-icon"><i class="fas fa-check-circle"></i></div>
+                <h4>Appointment Booked Successfully!</h4>
+            </div>
+        </div>
+    </div>
+</ng-template>
