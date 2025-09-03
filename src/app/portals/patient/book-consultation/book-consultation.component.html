@@ -107,18 +107,67 @@
 <ng-template #doctorProfileModal let-modal>
   <ng-container *ngIf="selectedDoctor && selectedDoctor.doctorProfile">
     <div class="modal-header">
-      <h4 class="modal-title">{{ getDoctorFullName(selectedDoctor) }}</h4>
-      <button type="button" class="close" (click)="modal.dismiss()"><span>&times;</span></button>
+      <h4 class="modal-title">
+        <i class="fas fa-user-md"></i> {{ getDoctorFullName(selectedDoctor) }}
+      </h4>
+      <button type="button" class="close" (click)="modal.dismiss()" aria-label="Close">
+        <span aria-hidden="true">&times;</span>
+      </button>
     </div>
     <div class="modal-body">
-        <p><strong>Specialization:</strong> {{ selectedDoctor.doctorProfile.specialization }}</p>
-        <p><strong>Experience:</strong> {{ selectedDoctor.doctorProfile.experience }} years</p>
-        <p><strong>Bio:</strong> {{ selectedDoctor.doctorProfile.bio }}</p>
+      <div class="doctor-avatar" [style.backgroundImage]="'url(' + (selectedDoctor.profileImage || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzY3M0Q3QSIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGQ9Ik0yMC4xNCAxOS43OUwtMTguNjggMjAuNjZMNC4yMSA0LjIyTDIwLjE0IDIwLjE2VjE5Ljc5WiIgZmlsbD0iI2U5ZWNmMiIvPjxwYXRoIGQ9Ik0xOS43OCA0LjIxbC0xNS41NyAxNS41Nk0xOS43OCA0LjIxbC0xNS41NyAxNS41NiIgc3Ryb2tlPSIjNjczRDdBIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjxwYXRoIGQ9Ik0xOS43OCA0LjIxTDIwLjY5LTMuMzZMMTkuNzggNC4yMVoiIGZpbGw9IiNlOWVjZjIiLz48cGF0aCBkPSJNMTkuNzggNC4yMUwxMiAxMk0xMiAxMkw0LjIxIDE5Ljc5TTEyIDEydjkiIHN0cm9rZT0iIzY3M0Q3QSIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48L3N2Zz4=') + ')'">
+        <i class="fas fa-user-md" *ngIf="!selectedDoctor.profileImage"></i>
+      </div>
+      
+      <div class="doctor-rating" *ngIf="selectedDoctor.doctorProfile.rating">
+        <div class="stars">
+          <i class="fas fa-star" *ngFor="let star of getStars(selectedDoctor.doctorProfile.rating)"></i>
+        </div>
+        <span class="rating-text">{{ selectedDoctor.doctorProfile.rating.toFixed(1) }} ({{ selectedDoctor.doctorProfile.reviewCount || 0 }} reviews)</span>
+      </div>
+      
+      <p>
+        <strong><i class="fas fa-stethoscope"></i> Specialization</strong>
+        <span>{{ selectedDoctor.doctorProfile.specialization || 'Not specified' }}</span>
+      </p>
+      
+      <p>
+        <strong><i class="fas fa-briefcase"></i> Experience</strong>
+        <span>{{ selectedDoctor.doctorProfile.experience || 0 }} years</span>
+      </p>
+      
+      <p *ngIf="selectedDoctor.doctorProfile.qualifications">
+        <strong><i class="fas fa-graduation-cap"></i> Qualifications</strong>
+        <span>{{ selectedDoctor.doctorProfile.qualifications }}</span>
+      </p>
+      
+      <p *ngIf="selectedDoctor.doctorProfile.languages">
+        <strong><i class="fas fa-language"></i> Languages</strong>
+        <span>{{ selectedDoctor.doctorProfile.languages }}</span>
+      </p>
+      
+      <p *ngIf="selectedDoctor.doctorProfile.bio">
+        <strong><i class="fas fa-info-circle"></i> About</strong>
+        <span>{{ selectedDoctor.doctorProfile.bio }}</span>
+      </p>
+      
+      <div class="availability" *ngIf="selectedDoctor.doctorProfile.availableDays">
+        <strong><i class="far fa-calendar-alt"></i> Availability</strong>
+        <div class="availability-days">
+          {{ selectedDoctor.doctorProfile.availableDays }}
+          <span *ngIf="selectedDoctor.doctorProfile.availableHours">
+            ({{ selectedDoctor.doctorProfile.availableHours }})
+          </span>
+        </div>
+      </div>
     </div>
+    
     <div class="modal-footer">
-      <button type="button" class="btn btn-outline-secondary" (click)="modal.dismiss()">Close</button>
+      <button type="button" class="btn btn-outline-secondary" (click)="modal.dismiss()">
+        <i class="fas fa-times"></i> Close
+      </button>
       <button type="button" class="btn btn-primary" (click)="startBooking(selectedDoctor, bookingModal); modal.dismiss()">
-        Book Appointment
+        <i class="far fa-calendar-check"></i> Book Appointment
       </button>
     </div>
   </ng-container>

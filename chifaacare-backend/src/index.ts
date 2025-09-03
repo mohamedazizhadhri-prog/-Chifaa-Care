@@ -49,6 +49,7 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/profile', profileRoutes);
 app.use('/api/v1/appointments', appointmentRoutes);
 app.use('/api/v1/doctors', doctorRoutes);
+app.use('/api/v1/doctors', doctorRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

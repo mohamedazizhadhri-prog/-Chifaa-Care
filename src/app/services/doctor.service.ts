@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { Observable, of } from 'rxjs';
+import { map, catchError } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { DoctorUser } from '../models/doctor.model'; // Changed from DoctorWithUser
 
@@ -27,8 +27,20 @@ export class DoctorService {
    * @returns Observable with an array of doctors
    */
   getDoctors(): Observable<DoctorUser[]> {
+    console.log('Fetching doctors from:', this.apiUrl);
     return this.http.get<DoctorsApiResponse>(this.apiUrl).pipe(
-      map(response => response.data.doctors)
+      map(response => {
+        console.log('API Response:', response);
+        if (!response || !response.data || !Array.isArray(response.data.doctors)) {
+          console.error('Invalid response format:', response);
+          throw new Error('Invalid response format from server');
+        }
+        return response.data.doctors;
+      }),
+      catchError(error => {
+        console.error('Error fetching doctors:', error);
+        return of([]);
+      })
     );
   }
 
