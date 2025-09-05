@@ -1,10 +1,12 @@
 import { Component, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-patient-list',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="grid cols-1 fade-in">
       <!-- Pending Booking Requests -->
@@ -35,9 +37,25 @@ import { CommonModule } from '@angular/common';
               <button class="btn btn-red" (click)="refuseBooking(booking.id)">
                 <i class="fa-solid fa-times"></i> Refuse
               </button>
-              <button class="btn btn-outline" (click)="rescheduleBooking(booking.id)">
+              <button class="btn btn-outline" (click)="openReschedule(booking.id)">
                 <i class="fa-solid fa-calendar-alt"></i> Reschedule
               </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Confirmed Consultations -->
+      <div class="card lift" *ngIf="confirmedConsultations.length > 0">
+        <div class="card-header">Confirmed Consultations</div>
+        <div class="confirmed-list">
+          <div *ngFor="let c of confirmedConsultations" class="confirmed-item">
+            <div class="confirmed-info">
+              <strong>{{ c.patientName }}</strong>
+              <span class="muted">• {{ c.consultationType }}</span>
+            </div>
+            <div class="confirmed-when">
+              <i class="fa-solid fa-calendar-check"></i> {{ c.preferredDate }} at {{ c.preferredTime }}
             </div>
           </div>
         </div>
@@ -76,6 +94,31 @@ import { CommonModule } from '@angular/common';
             </div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Reschedule Modal (lightweight) -->
+    <div class="overlay" *ngIf="showReschedule" (click)="closeReschedule()"></div>
+    <div class="reschedule-modal" *ngIf="showReschedule" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <strong>Reschedule Booking</strong>
+        <button class="close-btn" (click)="closeReschedule()" aria-label="Close">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <label>Date</label>
+          <input type="date" [(ngModel)]="rescheduleDate" />
+        </div>
+        <div class="form-row">
+          <label>Time</label>
+          <input type="time" [(ngModel)]="rescheduleTime" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" (click)="closeReschedule()">Cancel</button>
+        <button class="btn btn-blue" [disabled]="!rescheduleDate || !rescheduleTime" (click)="saveReschedule()">
+          <i class="fa-solid fa-save"></i> Save
+        </button>
       </div>
     </div>
   `,
@@ -125,6 +168,12 @@ import { CommonModule } from '@angular/common';
       display: flex;
       gap: 8px;
     }
+    .confirmed-list { display: grid; gap: 10px; }
+    .confirmed-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 10px;
+    }
+    .confirmed-when { color: #065f46; font-weight: 600; display: flex; align-items: center; gap: 6px; }
     .patient-filters {
       display: flex;
       gap: 8px;
@@ -195,6 +244,28 @@ import { CommonModule } from '@angular/common';
       display: flex;
       gap: 8px;
     }
+
+    /* Lightweight modal */
+    .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 20000; }
+    .reschedule-modal { position: fixed; z-index: 20001; inset: 0; margin: auto; width: min(360px, 90vw); max-height: 60vh; background: #fff; border-radius: 12px; box-shadow: 0 20px 50px rgba(0,0,0,.25); display: grid; font-size: 0.94rem; }
+    .reschedule-modal .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-bottom: 1px solid #e5e7eb; }
+    .reschedule-modal .modal-body { padding: 10px; display: grid; gap: 8px; overflow: auto; max-height: calc(60vh - 88px); }
+    .reschedule-modal .modal-footer { padding: 8px 10px; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end; gap: 6px; }
+    .reschedule-modal .modal-footer .btn {
+      padding: 3px 8px;
+      font-size: 0.84rem;
+      border-radius: 6px;
+      line-height: 1.1;
+      min-height: 28px;
+      box-shadow: none; /* override global shadow to look slimmer */
+      align-self: center; /* avoid vertical stretch in flex */
+      white-space: nowrap; /* keep compact */
+    }
+    .reschedule-modal .modal-footer .btn i { margin-right: 6px; font-size: 0.95em; }
+    .reschedule-modal .form-row { display: grid; gap: 4px; }
+    .reschedule-modal .form-row label { font-size: 0.85rem; color: #475569; }
+    .reschedule-modal input[type="date"], .reschedule-modal input[type="time"] { width: 100%; padding: 6px 8px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.9rem; line-height: 1.2; }
+    .close-btn { background: transparent; border: none; font-size: 20px; cursor: pointer; }
   `]
 })
 export class PatientListComponent implements OnInit {
@@ -252,6 +323,16 @@ export class PatientListComponent implements OnInit {
 
   filteredPatients = this.allPatients;
 
+  confirmedConsultations: Array<{ id: string; patientName: string; consultationType: string; preferredDate: string; preferredTime: string; }> = [];
+
+  // Reschedule state
+  showReschedule = false;
+  rescheduleBookingId: string | null = null;
+  rescheduleDate = '';
+  rescheduleTime = '';
+
+  constructor(private router: Router) {}
+
   ngOnInit() {
     this.setFilter('all');
   }
@@ -267,8 +348,17 @@ export class PatientListComponent implements OnInit {
 
   acceptBooking(bookingId: string) {
     console.log('Accepting booking:', bookingId);
-    this.pendingBookings = this.pendingBookings.filter(b => b.id !== bookingId);
-    // Add to confirmed consultations
+    const booking = this.pendingBookings.find(b => b.id === bookingId);
+    if (booking) {
+      this.confirmedConsultations.unshift({
+        id: booking.id,
+        patientName: booking.patientName,
+        consultationType: booking.consultationType,
+        preferredDate: booking.preferredDate,
+        preferredTime: booking.preferredTime
+      });
+      this.pendingBookings = this.pendingBookings.filter(b => b.id !== bookingId);
+    }
   }
 
   refuseBooking(bookingId: string) {
@@ -277,18 +367,77 @@ export class PatientListComponent implements OnInit {
     // Send refusal notification to patient
   }
 
-  rescheduleBooking(bookingId: string) {
+  openReschedule(bookingId: string) {
     console.log('Rescheduling booking:', bookingId);
-    // Open reschedule dialog
+    const booking = this.pendingBookings.find(b => b.id === bookingId);
+    if (booking) {
+      this.rescheduleBookingId = bookingId;
+      // Pre-fill
+      this.rescheduleDate = this.parseToInputDate(booking.preferredDate) || '';
+      this.rescheduleTime = this.parseToInputTime(booking.preferredTime) || '';
+      this.showReschedule = true;
+    }
+  }
+
+  closeReschedule() {
+    this.showReschedule = false;
+    this.rescheduleBookingId = null;
+    this.rescheduleDate = '';
+    this.rescheduleTime = '';
+  }
+
+  saveReschedule() {
+    if (!this.rescheduleBookingId || !this.rescheduleDate || !this.rescheduleTime) return;
+    const idx = this.pendingBookings.findIndex(b => b.id === this.rescheduleBookingId);
+    if (idx > -1) {
+      // Store in a friendly display format
+      this.pendingBookings[idx] = {
+        ...this.pendingBookings[idx],
+        preferredDate: this.formatDisplayDate(this.rescheduleDate),
+        preferredTime: this.rescheduleTime
+      };
+    }
+    this.closeReschedule();
+  }
+
+  // Helpers to parse/format dates
+  private parseToInputDate(display: string): string | null {
+    // Accepts strings like 'Tomorrow' or 'Friday' — not easily mapped. Return null to let user choose.
+    const iso = Date.parse(display);
+    if (!isNaN(iso)) {
+      const d = new Date(iso);
+      return d.toISOString().split('T')[0];
+    }
+    return null;
+  }
+
+  private parseToInputTime(time: string): string | null {
+    // Expect formats like '2:00 PM' → 14:00
+    try {
+      const m = time.match(/^(\d{1,2}):(\d{2})\s*([AP]M)$/i);
+      if (!m) return null;
+      let h = parseInt(m[1], 10);
+      const min = m[2];
+      const ap = m[3].toUpperCase();
+      if (ap === 'PM' && h !== 12) h += 12;
+      if (ap === 'AM' && h === 12) h = 0;
+      return `${String(h).padStart(2,'0')}:${min}`;
+    } catch { return null; }
+  }
+
+  private formatDisplayDate(input: string): string {
+    // input is yyyy-mm-dd → display as e.g., 2025-09-05; customize if needed
+    return input;
   }
 
   viewPatientProfile(patientId: string) {
     console.log('Viewing patient profile:', patientId);
-    // Navigate to patient profile
+    this.router.navigate(['/doctor/patient-profile', patientId]);
   }
 
   scheduleConsultation(patientId: string) {
     console.log('Scheduling consultation for patient:', patientId);
-    // Open scheduling dialog
+    // Navigate to consultations with pre-selected patient via query param
+    this.router.navigate(['/doctor/consultations'], { queryParams: { patientId } });
   }
 }

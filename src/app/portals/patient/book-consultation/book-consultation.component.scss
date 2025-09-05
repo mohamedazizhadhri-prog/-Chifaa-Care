@@ -1,3 +1,186 @@
+// Modal z-index fix and popup styles
+:host ::ng-deep {
+  .modal {
+    z-index: 99999 !important; // Extremely high z-index
+    position: fixed;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    overflow-y: auto;
+    padding: 2rem;
+    background-color: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    
+    &.show {
+      opacity: 1;
+    }
+  }
+  
+  .modal-dialog {
+    margin: 0 auto;
+    width: 100%;
+    max-width: 900px;
+    pointer-events: none;
+    position: relative;
+    z-index: 99999;
+    transform: scale(0.95);
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    opacity: 0;
+    
+    .modal-content {
+      pointer-events: auto;
+      border: none;
+      border-radius: 16px;
+      box-shadow: 0 15px 50px rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+      transform: translateZ(0);
+      backface-visibility: hidden;
+      -webkit-font-smoothing: subpixel-antialiased;
+    }
+    
+    &.show {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+  
+  .modal-backdrop {
+    z-index: 99998 !important;
+    background-color: rgba(0, 0, 0, 0.7) !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    opacity: 0.8 !important;
+  }
+  
+  .modal-header {
+    border-bottom: 1px solid #e9ecef;
+    padding: 1.5rem 2rem;
+    background: linear-gradient(135deg, #1a73e8, #0d47a1);
+    color: white;
+    position: relative;
+    z-index: 1;
+    
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: -10px;
+      left: 0;
+      width: 100%;
+      height: 10px;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.1), transparent);
+      z-index: -1;
+    }
+    
+    .modal-title {
+      margin: 0;
+      font-size: 1.5rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      
+      i {
+        margin-right: 10px;
+      }
+    }
+    
+    .close {
+      color: white;
+      opacity: 0.8;
+      text-shadow: none;
+      padding: 0.5rem;
+      margin: -0.5rem -0.5rem -0.5rem auto;
+      font-size: 1.75rem;
+      line-height: 1;
+      transition: all 0.2s;
+      
+      &:hover {
+        opacity: 1;
+        transform: rotate(90deg);
+      }
+    }
+  }
+  
+  .modal-body {
+    padding: 2rem;
+    max-height: 70vh;
+    overflow-y: auto;
+    background-color: #fff;
+    
+    &::-webkit-scrollbar {
+      width: 8px;
+    }
+    
+    &::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 4px;
+    }
+    
+    &::-webkit-scrollbar-thumb {
+      background: #c1c1c1;
+      border-radius: 4px;
+      
+      &:hover {
+        background: #a8a8a8;
+      }
+    }
+  }
+  
+  .modal-footer {
+    border-top: 1px solid #e9ecef;
+    padding: 1.25rem 2rem;
+    background-color: #f8f9fa;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    border-bottom-left-radius: 16px;
+    border-bottom-right-radius: 16px;
+  }
+}
+
+// Doctor avatar styles
+.doctor-avatar {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background-color: #e9ecef;
+  background-size: cover;
+  background-position: center;
+  margin: -60px auto 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border: 4px solid white;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  
+  i {
+    font-size: 3rem;
+    color: #6c757d;
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    pointer-events: none;
+  }
+}
+
 // Main container
 .book-consultation-container {
   max-width: 1400px;
@@ -99,6 +282,30 @@
     &:hover {
       background-color: #1557b0;
     }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      width: 100%;
+      max-width: 380px;
+
+      .search-input {
+        flex: 1;
+        padding: 0.55rem 0.75rem;
+        border: 1px solid #dadce0;
+        border-radius: 6px;
+        font-size: 0.95rem;
+        transition: border-color 0.2s, box-shadow 0.2s;
+        background: #fff;
+
+        &:focus {
+          border-color: #1a73e8;
+          box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
+          outline: none;
+        }
+      }
+    }
   }
 }
 
@@ -138,6 +345,17 @@
 }
 
 // Doctor card styles
+/* Responsive grid for doctor cards */
+.doctor-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+
+  @media (max-width: 992px) {
+    grid-template-columns: 1fr;
+  }
+}
+
 .doctor-card {
   background: #fff;
   border-radius: 12px;

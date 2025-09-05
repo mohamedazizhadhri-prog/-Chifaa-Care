@@ -1,13 +1,20 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
-import { AuthService, User } from '../../../services/auth.service';
-import { AppointmentService, Appointment } from '../../../services/appointment.service';
+import { Router, RouterModule } from '@angular/router';
+import { AuthService } from '../../../services/auth.service';
+import { AppointmentService } from '../../../services/appointment.service';
+import { DoctorService } from '../../../services/doctor.service';
+import { Appointment, AppointmentWithRelations, ConsultationType } from '../../../../app/models/appointment.model';
+import { DoctorProfile, DoctorUser } from '../../../../app/models/doctor.model';
+import { User } from '../../../../app/models/user.model';
+import { mapAuthUserToUser } from '../../../../app/utils/type-mappers';
+import { HttpClientModule } from '@angular/common/http';
+import { catchError, of } from 'rxjs';
 
 @Component({
   selector: 'app-patient-dashboard',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterModule, HttpClientModule],
   template: `
     <section class="container">
       <div class="grid cols-3 fade-in">
@@ -30,17 +37,37 @@ import { AppointmentService, Appointment } from '../../../services/appointment.s
           <div class="card-header">Upcoming Appointment</div>
           <div *ngIf="nextAppointment; else noAppointment" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
             <div>
-              <div style="color:var(--c-blue);font-weight:700;">{{ nextAppointment.doctorName }} — {{ nextAppointment.doctorSpecialty }}</div>
-              <div class="badge badge-green" style="margin-top:6px;">{{ formatAppointmentDate(nextAppointment.date, nextAppointment.time) }}</div>
+              <div style="display:flex;align-items:center;gap:12px;">
+                <div *ngIf="isLoading" class="skeleton" style="width: 120px; height: 20px;"></div>
+                <div *ngIf="!isLoading && nextAppointment.doctor" style="color:var(--c-blue);font-weight:700;">
+                  Dr. {{ nextAppointment.doctor.firstName || '' }} {{ nextAppointment.doctor.lastName || '' }} — {{ nextAppointment.doctor.doctorProfile?.specialization || 'General Practitioner' }}
+                </div>
+                <div *ngIf="!isLoading && !nextAppointment.doctor && error" style="color:var(--c-red);">
+                  {{ error }}
+                </div>
+              </div>
+              <div *ngIf="nextAppointment" class="badge badge-green" style="margin-top:6px;">{{ formatAppointmentDate(nextAppointment.appointmentDate) }}</div>
+              <ng-container *ngIf="nextAppointment?.doctor?.doctorProfile as doctorProfile">
+                <div class="doctor-rating" style="margin-top:8px;display:flex;align-items:center;gap:4px;">
+                  <ng-container *ngIf="doctorProfile.rating !== undefined && doctorProfile.rating !== null">
+                    <i class="fa-solid fa-star" style="color:#FFD700;"></i>
+                    <span>{{ doctorProfile.rating.toFixed(1) }}</span>
+                  </ng-container>
+                  <ng-container *ngIf="(doctorProfile.experience !== undefined && doctorProfile.experience !== null) || 
+                                   (doctorProfile.rating !== undefined && doctorProfile.rating !== null)">
+                    <span class="muted">({{ (doctorProfile.experience || 0) }}+ years experience)</span>
+                  </ng-container>
+                </div>
+              </ng-container>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              <button class="btn btn-green" *ngIf="nextAppointment.consultationType === 'video'">
+              <button class="btn btn-green" *ngIf="nextAppointment.consultationType === ConsultationType.VIDEO">
                 <i class="fa-solid fa-video"></i> Join Call
               </button>
-              <button class="btn btn-green" *ngIf="nextAppointment.consultationType === 'in-person'">
+              <button class="btn btn-green" *ngIf="nextAppointment.consultationType === ConsultationType.IN_PERSON">
                 <i class="fa-solid fa-hospital"></i> View Details
               </button>
-              <button class="btn btn-green" *ngIf="nextAppointment.consultationType === 'phone'">
+              <button class="btn btn-green" *ngIf="nextAppointment.consultationType === ConsultationType.PHONE">
                 <i class="fa-solid fa-phone"></i> Call Info
               </button>
               <button class="btn btn-blue-outline" (click)="rescheduleAppointment(nextAppointment.id)">
@@ -112,28 +139,58 @@ import { AppointmentService, Appointment } from '../../../services/appointment.s
       </div>
     </section>
   `,
-  styles: [`:host{display:block}`]
+  styles: [`
+    :host { display: block; }
+    
+    .skeleton {
+      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 4px;
+    }
+    
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    
+    .doctor-rating {
+      font-size: 14px;
+      color: #555;
+    }
+  `]
 })
 export class PatientDashboardComponent implements OnInit {
+  public ConsultationType = ConsultationType; // Added this line
   currentUser: User | null = null;
-  nextAppointment: Appointment | null = null;
+  nextAppointment: AppointmentWithRelations | null = null;
+  doctorProfile: DoctorProfile | null = null;
+  isLoading = false;
+  error: string | null = null;
+  
 
   constructor(
     private router: Router,
     private authService: AuthService,
-    private appointmentService: AppointmentService
-  ) {}
+    private appointmentService: AppointmentService,
+    private doctorService: DoctorService
+  ) {
+  }
 
-  ngOnInit() {
-    // Subscribe to current user changes
-    this.authService.currentUser$.subscribe(user => {
-      this.currentUser = user;
-      this.loadNextAppointment();
-    });
-
-    // Subscribe to appointment changes
-    this.appointmentService.appointments$.subscribe(() => {
-      this.loadNextAppointment();
+  ngOnInit(): void {
+    // Get current user
+    this.authService.currentUser$.subscribe({
+      next: (authUser) => {
+        // Map AuthService user to our app's User type
+        this.currentUser = mapAuthUserToUser(authUser);
+        if (this.currentUser) {
+          this.loadNextAppointment(this.currentUser.id);
+        }
+      },
+      error: (err) => {
+        console.error('Error getting current user:', err);
+        this.error = 'Failed to load user data. Please try again later.';
+      }
     });
   }
 
@@ -143,54 +200,72 @@ export class PatientDashboardComponent implements OnInit {
   }
 
   getUserInitials(): string {
-    if (!this.currentUser?.name) return 'P';
-    return this.currentUser.name
-      .split(' ')
-      .map(word => word.charAt(0))
-      .join('')
-      .toUpperCase()
-      .substring(0, 2);
+    if (!this.currentUser?.firstName) return 'P';
+    const first = this.currentUser.firstName.charAt(0);
+    const last = this.currentUser.lastName ? this.currentUser.lastName.charAt(0) : '';
+    return `${first}${last}`.toUpperCase().substring(0, 2);
   }
 
   getDisplayName(): string {
-    if (!this.currentUser?.name) return 'Patient';
-    return this.currentUser.name;
+    if (!this.currentUser?.firstName) return 'Patient';
+    return `${this.currentUser.firstName} ${this.currentUser.lastName || ''}`.trim();
   }
 
   onBookConsultation(): void {
     this.router.navigate(['/patient/book-consultation']);
   }
 
-
-
-  private loadNextAppointment(): void {
-    if (this.currentUser) {
-      this.nextAppointment = this.appointmentService.getNextAppointment(this.currentUser.id || this.currentUser.name);
-    }
+  private capitalizeFirstLetter(word: string): string {
+    if (!word) return '';
+    return word.charAt(0).toUpperCase() + word.slice(1);
   }
 
-  formatAppointmentDate(date: string, time: string): string {
-    const appointmentDate = new Date(`${date}T${time}`);
-    const now = new Date();
-    const diffTime = appointmentDate.getTime() - now.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  private loadNextAppointment(userId: string): void {
+    this.isLoading = true;
+    this.error = null;
+
+    this.appointmentService.getNextAppointment({ patientId: userId }).subscribe({
+      next: (appointment) => {
+        if (appointment) {
+          this.nextAppointment = appointment as AppointmentWithRelations;
+          // If the appointment includes doctor data, process it
+          if (appointment.doctor) {
+            const doctor = appointment.doctor as DoctorUser;
+            this.doctorProfile = doctor.doctorProfile;
+          } else if (appointment.doctorId) {
+            // Otherwise, fetch the doctor's profile
+            this.loadDoctorProfile(appointment.doctorId);
+          }
+        } else {
+          this.nextAppointment = null;
+        }
+        this.isLoading = false;
+      },
+      error: (err: any) => {
+        console.error('Error loading next appointment:', err);
+        this.error = 'Failed to load appointment. Please try again later.';
+        this.isLoading = false;
+      }
+    });
+  }
+
+  formatAppointmentDate(dateTimeString: string | Date): string {
+    if (!dateTimeString) return 'Date not set';
     
-    if (diffDays === 0) {
-      return `Today, ${time}`;
-    } else if (diffDays === 1) {
-      return `Tomorrow, ${time}`;
-    } else if (diffDays < 7) {
-      return appointmentDate.toLocaleDateString('en-US', { 
-        weekday: 'short', 
-        month: 'short', 
-        day: 'numeric' 
-      }) + `, ${time}`;
-    } else {
-      return appointmentDate.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric' 
-      }) + `, ${time}`;
-    }
+    const date = new Date(dateTimeString);
+    if (isNaN(date.getTime())) return 'Invalid date';
+    
+    const options: Intl.DateTimeFormatOptions = { 
+      weekday: 'long', 
+      month: 'long', 
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    };
+    
+    return date.toLocaleString('en-US', options);
   }
 
   rescheduleAppointment(appointmentId: string): void {
@@ -201,5 +276,41 @@ export class PatientDashboardComponent implements OnInit {
 
   goToMessages(): void {
     this.router.navigate(['/patient/messages']);
+  }
+
+  private loadDoctorProfile(doctorId: string): void {
+    if (!doctorId) {
+      console.error('No doctor ID provided to load profile');
+      return;
+    }
+
+    this.isLoading = true;
+    this.error = null;
+
+    this.doctorService.getDoctorProfile(doctorId).subscribe({
+      next: (response: unknown) => {
+        try {
+          // Type guard to ensure the response has the expected shape
+          if (response && typeof response === 'object' && 'id' in response) {
+            // Use the type mapper to handle the doctor profile conversion
+            const doctor = response as DoctorUser;
+            this.doctorProfile = doctor.doctorProfile;
+          } else {
+            console.error('Unexpected response format from doctor service:', response);
+            this.error = 'Unexpected response format from server.';
+          }
+        } catch (err) {
+          console.error('Error processing doctor profile:', err);
+          this.error = 'Error processing doctor profile data.';
+        } finally {
+          this.isLoading = false;
+        }
+      },
+      error: (err: unknown) => {
+        console.error('Error loading doctor profile:', err);
+        this.error = 'Failed to load doctor profile. Please try again later.';
+        this.isLoading = false;
+      }
+    });
   }
 }

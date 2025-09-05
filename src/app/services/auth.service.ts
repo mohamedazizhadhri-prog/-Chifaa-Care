@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpResponse } from '@angular/common/http';
 import { BehaviorSubject, Observable, throwError } from 'rxjs';
 import { catchError, map, tap } from 'rxjs/operators';
 import { AppointmentService } from './appointment.service';
@@ -64,26 +64,47 @@ export class AuthService {
 
   // Login with real API call
   login(email: string, password: string): Observable<{ user: User; token: string }> {
+    console.log('Attempting login to:', `${this.API_URL}/auth/login`);
     return this.http.post<{ status: string; token: string; data: { user: any } }>(
       `${this.API_URL}/auth/login`,
-      { email, password }
+      { email, password },
+      { observe: 'response' as const }
     ).pipe(
-      map(response => {
-        if (response.status !== 'success') {
-          throw new Error('Login failed');
+      map((response) => {
+        const responseBody = response.body;
+        if (!responseBody) {
+          throw new Error('Empty response from server');
+        }
+        
+        console.log('Login response:', response);
+        if (response.status !== 200) {
+          throw new Error(`Login failed with status: ${response.status}`);
+        }
+        
+        if (responseBody.status !== 'success') {
+          const errorMessage = (responseBody as any)?.message || 'Invalid response from server';
+          throw new Error(errorMessage);
         }
 
-        // Common user properties
+        // Extract user data from response
+        const userData = responseBody.data?.user;
+        if (!userData) {
+          throw new Error('Invalid user data in response');
+        }
+
+        // Create base user object
         const baseUser = {
-          id: response.data.user.id,
-          name: `${response.data.user.firstName} ${response.data.user.lastName}`,
-          email: response.data.user.email,
-          role: response.data.user.role.toLowerCase() as 'patient' | 'doctor'
+          id: userData.id,
+          name: `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || 'User',
+          email: userData.email,
+          role: (userData.role || 'patient').toLowerCase() as 'patient' | 'doctor'
         };
 
         // Create the appropriate user type based on role
+        const role = userData.role?.toUpperCase();
         let user: User;
-        if (response.data.user.role === 'DOCTOR') {
+        
+        if (role === 'DOCTOR') {
           user = {
             ...baseUser,
             role: 'doctor',
@@ -102,7 +123,20 @@ export class AuthService {
           } as Patient;
         }
 
-        return { user, token: response.token };
+        if (!responseBody.token) {
+          throw new Error('No authentication token received');
+        }
+        
+        // Verify we have a token
+        const token = responseBody.token;
+        if (!token) {
+          throw new Error('No authentication token received');
+        }
+
+        return {
+          user,
+          token
+        };
       }),
       tap(response => this.setSession(response)),
       catchError(error => {
@@ -114,37 +148,81 @@ export class AuthService {
 
   // Signup with real API call
   signup(userData: any): Observable<{ user: User; token: string }> {
+    console.log('Preparing signup data:', userData);
+    
     // Prepare the request body according to the backend API
     const requestBody = {
-      firstName: userData.name.split(' ')[0],
-      lastName: userData.name.split(' ').slice(1).join(' ') || 'User',
+      firstName: userData.firstName || userData.name?.split(' ')[0] || '',
+      lastName: userData.lastName || userData.name?.split(' ').slice(1).join(' ') || 'User',
       email: userData.email,
       password: userData.password,
-      role: userData.role.toUpperCase(),
+      role: userData.role ? userData.role.toUpperCase() : 'PATIENT',
       phone: userData.phone || '',
-      gender: userData.gender || 'other'
+      gender: userData.gender || 'other',
+      dateOfBirth: userData.dateOfBirth,
+      // Include profile data if available
+      ...(userData.role === 'doctor' ? {
+        specialization: userData.specialization,
+        bio: userData.bio,
+        licenseNumber: userData.licenseNumber,
+        experience: userData.experience,
+        consultationFee: userData.consultationFee
+      } : {
+        bloodType: userData.bloodType,
+        height: userData.height,
+        weight: userData.weight
+      })
     };
+    
+    console.log('Sending signup request with data:', requestBody);
 
     return this.http.post<{ status: string; token: string; data: { user: any } }>(
       `${this.API_URL}/auth/signup`,
-      requestBody
+      requestBody,
+      { observe: 'response' as const }
     ).pipe(
-      map(response => {
-        if (response.status !== 'success') {
-          throw new Error('Signup failed');
+      map((response: HttpResponse<{ status: string; token: string; data: { user: any } }>) => {
+        console.log('Signup response:', response);
+        
+        if (response.status !== 201 && response.status !== 200) {
+          const errorResponse = response as unknown as { error: any };
+          throw {
+            status: response.status,
+            error: errorResponse?.error || { message: `Signup failed with status: ${response.status}` }
+          };
+        }
+        
+        const responseBody = response.body;
+        if (!responseBody || responseBody.status !== 'success') {
+          const errorData = responseBody as any;
+          throw {
+            status: response.status,
+            error: { 
+              message: errorData?.message || 'Invalid response from server',
+              errors: errorData?.errors
+            }
+          };
         }
 
-        // Common user properties
+        // Extract user data from response
+        const userData = responseBody.data?.user;
+        if (!userData) {
+          throw new Error('Invalid user data in response');
+        }
+
+        // Create base user object
         const baseUser = {
-          id: response.data.user.id,
-          name: `${response.data.user.firstName} ${response.data.user.lastName}`,
-          email: response.data.user.email,
-          role: response.data.user.role.toLowerCase() as 'patient' | 'doctor'
+          id: userData.id,
+          name: `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || 'User',
+          email: userData.email,
+          role: (userData.role || 'patient').toLowerCase() as 'patient' | 'doctor'
         };
 
         // Create the appropriate user type based on role
+        const role = userData.role?.toUpperCase();
         let user: User;
-        if (response.data.user.role === 'DOCTOR') {
+        
+        if (role === 'DOCTOR') {
           user = {
             ...baseUser,
             role: 'doctor',
@@ -163,7 +241,20 @@ export class AuthService {
           } as Patient;
         }
 
-        return { user, token: response.token };
+        if (!responseBody.token) {
+          throw new Error('No authentication token received');
+        }
+        
+        // Verify we have a token
+        const token = responseBody.token;
+        if (!token) {
+          throw new Error('No authentication token received');
+        }
+
+        return {
+          user,
+          token
+        };
       }),
       tap(response => this.setSession(response)),
       catchError(error => {

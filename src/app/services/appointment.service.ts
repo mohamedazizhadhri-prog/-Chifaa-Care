@@ -1,122 +1,240 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
-
-export interface Appointment {
-  id: string;
-  patientId: string;
-  doctorId: number;
-  doctorName: string;
-  doctorSpecialty: string;
-  date: string;
-  time: string;
-  consultationType: 'video' | 'in-person' | 'phone';
-  reason: string;
-  status: 'upcoming' | 'completed' | 'cancelled';
-  createdAt: Date;
-  medicalRecord?: {
-    name: string;
-    size: number;
-    type: string;
-  };
-  insurance?: string;
-}
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { Observable, catchError, map, of, throwError } from 'rxjs';
+import { environment } from '../../environments/environment';
+import { 
+  Appointment, 
+  AppointmentWithRelations, 
+  CreateAppointmentData, 
+  UpdateAppointmentData,
+  AppointmentStatus,
+  ConsultationType
+} from '../models/appointment.model';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AppointmentService {
-  private readonly APPOINTMENTS_KEY = 'patient_appointments';
-  private appointmentsSubject = new BehaviorSubject<Appointment[]>([]);
-  public appointments$ = this.appointmentsSubject.asObservable();
+  private apiUrl = `${environment.apiUrl}/appointments`;
 
-  constructor() {
-    this.loadAppointments();
+  constructor(private http: HttpClient) {}
+
+  /**
+   * Get all appointments with optional filters
+   * @param options Filtering and pagination options
+   * @returns Observable of appointments array with relations
+   */
+  getAppointments(options?: {
+    patientId?: string;
+    doctorId?: string;
+    status?: AppointmentStatus;
+    startDate?: Date;
+    endDate?: Date;
+    limit?: number;
+    offset?: number;
+  }): Observable<AppointmentWithRelations[]> {
+    let params = new HttpParams();
+    
+    if (options?.patientId) params = params.set('patientId', options.patientId);
+    if (options?.doctorId) params = params.set('doctorId', options.doctorId);
+    if (options?.status) params = params.set('status', options.status);
+    if (options?.startDate) params = params.set('startDate', options.startDate.toISOString());
+    if (options?.endDate) params = params.set('endDate', options.endDate.toISOString());
+    if (options?.limit) params = params.set('limit', options.limit.toString());
+    if (options?.offset) params = params.set('offset', options.offset.toString());
+    
+    return this.http.get<AppointmentWithRelations[]>(this.apiUrl, { params }).pipe(
+      catchError(error => {
+        console.error('Error fetching appointments:', error);
+        return of([]);
+      })
+    );
   }
 
-  private loadAppointments(): void {
-    try {
-      const stored = localStorage.getItem(this.APPOINTMENTS_KEY);
-      if (stored) {
-        const appointments = JSON.parse(stored).map((apt: any) => ({
-          ...apt,
-          createdAt: new Date(apt.createdAt)
-        }));
-        this.appointmentsSubject.next(appointments);
-      }
-    } catch (error) {
-      console.error('Error loading appointments:', error);
-      this.appointmentsSubject.next([]);
-    }
+  /**
+   * Get a single appointment by ID
+   * @param id The ID of the appointment
+   * @returns Observable of the appointment or null if not found
+   */
+  getAppointmentById(id: string): Observable<AppointmentWithRelations | null> {
+    return this.http.get<AppointmentWithRelations>(`${this.apiUrl}/${id}`).pipe(
+      catchError(error => {
+        if (error.status === 404) {
+          return of(null);
+        }
+        console.error('Error fetching appointment:', error);
+        return throwError(() => error);
+      })
+    );
   }
 
-  private saveAppointments(appointments: Appointment[]): void {
-    try {
-      localStorage.setItem(this.APPOINTMENTS_KEY, JSON.stringify(appointments));
-    } catch (error) {
-      console.error('Error saving appointments:', error);
-    }
-  }
+  /**
+   * Get the next upcoming appointment for a patient or doctor
+   * @param options Filter options (either patientId or doctorId is required)
+   * @returns Observable of the next appointment or null if none found
+   */
+  getNextAppointment(options: { patientId: string } | { doctorId: string }): Observable<AppointmentWithRelations | null> {
+    const now = new Date();
+    const startDate = new Date();
+    const endDate = new Date();
+    endDate.setMonth(now.getMonth() + 1); // Look ahead 1 month
 
-  bookAppointment(appointmentData: Omit<Appointment, 'id' | 'createdAt' | 'status'>): Appointment {
-    const newAppointment: Appointment = {
-      ...appointmentData,
-      id: this.generateId(),
-      createdAt: new Date(),
-      status: 'upcoming'
+    const params: any = { 
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      status: ['PENDING', 'CONFIRMED'],
+      sort: 'appointmentDate',
+      order: 'ASC',
+      limit: 1
     };
 
-    const currentAppointments = this.appointmentsSubject.value;
-    const updatedAppointments = [...currentAppointments, newAppointment];
-    
-    this.appointmentsSubject.next(updatedAppointments);
-    this.saveAppointments(updatedAppointments);
-    
-    return newAppointment;
-  }
+    if ('patientId' in options) {
+      params.patientId = options.patientId;
+    } else if ('doctorId' in options) {
+      params.doctorId = options.doctorId;
+    }
 
-  getUpcomingAppointments(patientId: string): Appointment[] {
-    const now = new Date();
-    return this.appointmentsSubject.value
-      .filter(apt => 
-        apt.patientId === patientId && 
-        apt.status === 'upcoming' &&
-        new Date(`${apt.date}T${apt.time}`) > now
-      )
-      .sort((a, b) => new Date(`${a.date}T${a.time}`).getTime() - new Date(`${b.date}T${b.time}`).getTime());
-  }
-
-  getNextAppointment(patientId: string): Appointment | null {
-    const upcoming = this.getUpcomingAppointments(patientId);
-    return upcoming.length > 0 ? upcoming[0] : null;
-  }
-
-  cancelAppointment(appointmentId: string): void {
-    const currentAppointments = this.appointmentsSubject.value;
-    const updatedAppointments = currentAppointments.map(apt => 
-      apt.id === appointmentId ? { ...apt, status: 'cancelled' as const } : apt
+    return this.http.get<AppointmentWithRelations[]>(this.apiUrl, { params }).pipe(
+      map(appointments => appointments[0] || null),
+      catchError(error => {
+        console.error('Error fetching next appointment:', error);
+        return of(null);
+      })
     );
-    
-    this.appointmentsSubject.next(updatedAppointments);
-    this.saveAppointments(updatedAppointments);
   }
 
-  rescheduleAppointment(appointmentId: string, newDate: string, newTime: string): void {
-    const currentAppointments = this.appointmentsSubject.value;
-    const updatedAppointments = currentAppointments.map(apt => 
-      apt.id === appointmentId ? { ...apt, date: newDate, time: newTime } : apt
+  /**
+   * Book a new appointment
+   * @param appointmentData The appointment data to book
+   * @returns Observable of the created appointment with relations
+   */
+  bookAppointment(appointmentData: CreateAppointmentData): Observable<AppointmentWithRelations> {
+    // Validate required fields
+    if (!appointmentData.patientId || !appointmentData.doctorId || !appointmentData.appointmentDate) {
+      return throwError(() => new Error('Missing required appointment data'));
+    }
+
+    // Set default status if not provided
+    const data = {
+      ...appointmentData,
+      status: 'PENDING' as AppointmentStatus
+    };
+
+    return this.http.post<AppointmentWithRelations>(this.apiUrl, data).pipe(
+      catchError(error => {
+        console.error('Error booking appointment:', error);
+        return throwError(() => error);
+      })
     );
-    
-    this.appointmentsSubject.next(updatedAppointments);
-    this.saveAppointments(updatedAppointments);
   }
 
-  private generateId(): string {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+  /**
+   * Cancel an existing appointment
+   * @param appointmentId The ID of the appointment to cancel
+   * @param reason Optional reason for cancellation
+   * @returns Observable of the updated appointment with relations
+   */
+  cancelAppointment(appointmentId: string, reason?: string): Observable<AppointmentWithRelations> {
+    const updateData: UpdateAppointmentData = {
+      status: 'CANCELLED',
+      metadata: {
+        cancellationReason: reason || 'Patient requested cancellation'
+      }
+    };
+
+    return this.http.patch<AppointmentWithRelations>(
+      `${this.apiUrl}/${appointmentId}/status`,
+      updateData
+    ).pipe(
+      catchError(error => {
+        console.error('Error cancelling appointment:', error);
+        return throwError(() => error);
+      })
+    );
   }
 
-  // Clear all appointments (useful for testing or logout)
+  /**
+   * Update an existing appointment
+   * @param appointmentId The ID of the appointment to update
+   * @param updateData The data to update
+   * @returns Observable of the updated appointment with relations
+   */
+  updateAppointment(
+    appointmentId: string,
+    updateData: UpdateAppointmentData
+  ): Observable<AppointmentWithRelations> {
+    return this.http.patch<AppointmentWithRelations>(
+      `${this.apiUrl}/${appointmentId}`,
+      updateData
+    ).pipe(
+      catchError(error => {
+        console.error('Error updating appointment:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  /**
+   * Reschedule an existing appointment
+   * @param appointmentId The ID of the appointment to reschedule
+   * @param newAppointmentDate The new appointment date
+   * @param newEndTime The new end time
+   * @param reason Optional reason for rescheduling
+   * @returns Observable of the updated appointment with relations
+   */
+  rescheduleAppointment(
+    appointmentId: string, 
+    newAppointmentDate: string, 
+    newEndTime: string,
+    reason?: string
+  ): Observable<AppointmentWithRelations> {
+    const updateData: UpdateAppointmentData = {
+      appointmentDate: newAppointmentDate,
+      endTime: newEndTime,
+      status: 'PENDING', // Reset status to PENDING for doctor approval
+      metadata: {
+        rescheduledFrom: new Date().toISOString(),
+        cancellationReason: reason
+      }
+    };
+
+    return this.updateAppointment(appointmentId, updateData);
+  }
+
+  /**
+   * Get available time slots for a doctor
+   * @param doctorId The ID of the doctor
+   * @param date The date to check availability for
+   * @param duration Duration of the appointment in minutes (default: 30)
+   * @returns Observable of available time slots
+   */
+  getAvailableSlots(
+    doctorId: string,
+    date: Date,
+    duration: number = 30
+  ): Observable<{ start: string; end: string; }[]> {
+    const params = new HttpParams()
+      .set('date', date.toISOString())
+      .set('duration', duration.toString());
+
+    return this.http.get<{ start: string; end: string; }[]>(
+      `${this.apiUrl}/doctors/${doctorId}/availability`,
+      { params }
+    ).pipe(
+      catchError(error => {
+        console.error('Error fetching available slots:', error);
+        return of([]);
+      })
+    );
+  }
+
+  /**
+   * Clear all appointments from the service (used during logout)
+   * @returns void
+   */
   clearAllAppointments(): void {
-    this.appointmentsSubject.next([]);
-    localStorage.removeItem(this.APPOINTMENTS_KEY);
+    // This method is intentionally left empty as it's just used to clear any in-memory state
+    // The actual appointments are managed by the backend and user's authentication state
+    console.log('Appointments cleared from service');
   }
 }

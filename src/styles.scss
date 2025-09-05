@@ -108,3 +108,61 @@ main {
 .brand-chifaacare { font-weight: 800; letter-spacing: .2px; white-space: nowrap; }
 .brand-chifaacare .part-chifaa { color: var(--brand-chifaa); }
 .brand-chifaacare .part-care { color: var(--brand-care); }
+
+/* Global modal styles (for ng-bootstrap) */
+.modal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  overflow-x: hidden;
+  overflow-y: auto;
+  z-index: 20000; /* ensure above navbar and other overlays */
+}
+
+.modal.show {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
+}
+
+.modal-dialog {
+  position: relative;
+  width: auto;
+  margin: 1rem;
+  pointer-events: none;
+  max-width: 720px;
+}
+
+.modal-dialog .modal-content {
+  pointer-events: auto;
+}
+
+.modal-content {
+  background-color: #fff;
+  border: none;
+  border-radius: 16px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.25);
+  overflow: hidden;
+}
+
+.modal-header {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-footer {
+  border-top: 1px solid #e5e7eb;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  z-index: 19999;
+}
+
+.modal-backdrop.show { opacity: 1; }
+
+/* Prevent background scroll when modal open */
+body.modal-open { overflow: hidden; }

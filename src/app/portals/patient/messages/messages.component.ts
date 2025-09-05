@@ -2,6 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService, User } from '../../../services/auth.service';
+import { MessageService, Conversation, ChatMessage } from '../../../services/message.service';
+import { SocketService } from '../../../services/socket.service';
 
 @Component({
   selector: 'app-patient-messages',
@@ -431,74 +433,59 @@ import { AuthService, User } from '../../../services/auth.service';
 })
 export class PatientMessagesComponent implements OnInit {
   currentUser: User | null = null;
-  currentPatientId = 'patient-1';
+  currentPatientId = '';
   selectedChatId: string | null = null;
   selectedChat: any = null;
   newMessage = '';
   searchQuery = '';
   
-  allChats = [
-    {
-      id: '1',
-      doctorName: 'Dr. Sarah Ahmed',
-      specialty: 'Cardiologist',
-      lastMessage: 'Your blood pressure readings look good. Keep taking your medication.',
-      lastMessageTime: '5 min ago',
-      unreadCount: 1,
-      isOnline: true,
-      messages: [
-        { id: '1', senderId: 'patient-1', text: 'Hello Dr. Ahmed, I have a question about my medication', timestamp: '10:30 AM' },
-        { id: '2', senderId: 'doctor-1', text: 'Of course! What would you like to know?', timestamp: '10:32 AM' },
-        { id: '3', senderId: 'patient-1', text: 'Should I take it with food?', timestamp: '10:33 AM' },
-        { id: '4', senderId: 'doctor-1', text: 'Yes, it\'s better to take it with meals to avoid stomach upset', timestamp: '10:35 AM' },
-        { id: '5', senderId: 'doctor-1', text: 'Your blood pressure readings look good. Keep taking your medication.', timestamp: '5 min ago' }
-      ]
-    },
-    {
-      id: '2',
-      doctorName: 'Dr. Michael Chen',
-      specialty: 'Endocrinologist',
-      lastMessage: 'Your A1C results are improving!',
-      lastMessageTime: '2 hours ago',
-      unreadCount: 0,
-      isOnline: false,
-      messages: [
-        { id: '1', senderId: 'patient-1', text: 'Hi Dr. Chen, I got my lab results back', timestamp: '8:15 AM' },
-        { id: '2', senderId: 'doctor-2', text: 'Great! Let me review them', timestamp: '8:20 AM' },
-        { id: '3', senderId: 'doctor-2', text: 'Your A1C results are improving!', timestamp: '2 hours ago' }
-      ]
-    },
-    {
-      id: '3',
-      doctorName: 'Dr. Emily Rodriguez',
-      specialty: 'General Practice',
-      lastMessage: 'Thank you for updating me on your symptoms',
-      lastMessageTime: 'Yesterday',
-      unreadCount: 0,
-      isOnline: true,
-      messages: [
-        { id: '1', senderId: 'patient-1', text: 'Good morning Dr. Rodriguez', timestamp: 'Yesterday 2:00 PM' },
-        { id: '2', senderId: 'doctor-3', text: 'Good morning! How are you feeling today?', timestamp: 'Yesterday 2:05 PM' },
-        { id: '3', senderId: 'patient-1', text: 'Much better, the new treatment is working', timestamp: 'Yesterday 2:07 PM' },
-        { id: '4', senderId: 'doctor-3', text: 'Thank you for updating me on your symptoms', timestamp: 'Yesterday 2:10 PM' }
-      ]
-    }
-  ];
-  
+  // Conversations loaded from backend mapped to the UI chat model
+  allChats: Array<{ id: string; doctorName: string; specialty: string; lastMessage: string; lastMessageTime: string; unreadCount: number; isOnline: boolean; messages: Array<{ id: string; senderId: string; text: string; timestamp: string; recipientId?: string; }> }> = [];
   filteredChats = this.allChats;
+  private selectedOtherUserId: string | null = null;
 
-  constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService, private messageService: MessageService, private socket: SocketService) {}
 
   ngOnInit() {
-    // Subscribe to current user changes
+    // Subscribe to current user and load conversations
     this.authService.currentUser$.subscribe(user => {
       this.currentUser = user;
+      if (user?.id) {
+        this.currentPatientId = user.id;
+        this.loadConversations();
+        // Connect sockets and listen for incoming messages
+        this.socket.connect(user.id);
+        this.socket.on<any>('message:new', (m) => {
+          // If the selected chat is with the sender, append; else bump unread
+          if (this.selectedOtherUserId === m.senderId && this.selectedChat) {
+            const mapped = { id: m.id, senderId: m.senderId, recipientId: m.recipientId, text: m.content, timestamp: new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
+            this.selectedChat.messages.push(mapped);
+            this.selectedChat.lastMessage = mapped.text;
+            this.selectedChat.lastMessageTime = 'Just now';
+          } else {
+            const chat = this.allChats.find(c => c.id === m.senderId);
+            if (chat) {
+              chat.unreadCount = (chat.unreadCount || 0) + 1;
+              chat.lastMessage = m.content;
+              chat.lastMessageTime = 'Just now';
+            } else {
+              // New conversation
+              this.allChats.unshift({
+                id: m.senderId,
+                doctorName: 'New Message',
+                specialty: '',
+                lastMessage: m.content,
+                lastMessageTime: 'Just now',
+                unreadCount: 1,
+                isOnline: false,
+                messages: []
+              });
+              this.filteredChats = this.allChats;
+            }
+          }
+        });
+      }
     });
-    
-    // Auto-select first chat if available
-    if (this.allChats.length > 0) {
-      this.selectChat(this.allChats[0].id);
-    }
   }
 
   getDisplayName(): string {
@@ -520,11 +507,20 @@ export class PatientMessagesComponent implements OnInit {
   selectChat(chatId: string) {
     this.selectedChatId = chatId;
     this.selectedChat = this.allChats.find(chat => chat.id === chatId);
+    this.selectedOtherUserId = chatId;
     
-    // Mark messages as read
-    if (this.selectedChat) {
-      this.selectedChat.unreadCount = 0;
-    }
+    if (!this.currentPatientId || !this.selectedOtherUserId) return;
+    // Load thread from backend
+    this.messageService.getThread(this.currentPatientId, this.selectedOtherUserId).subscribe(res => {
+      const msgs = res.data.messages;
+      const mapped = msgs.map(m => ({ id: m.id, senderId: m.senderId, recipientId: m.recipientId, text: m.content, timestamp: new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }));
+      if (this.selectedChat) {
+        this.selectedChat.messages = mapped;
+        this.selectedChat.unreadCount = 0;
+      }
+      // Mark as read
+      this.messageService.markThreadRead(this.currentPatientId!, this.selectedOtherUserId!).subscribe();
+    });
   }
 
   getUnreadCount(): number {
@@ -537,20 +533,16 @@ export class PatientMessagesComponent implements OnInit {
   }
 
   sendMessage() {
-    if (!this.newMessage.trim() || !this.selectedChat) return;
-    
-    const message = {
-      id: Date.now().toString(),
-      senderId: this.currentPatientId,
-      text: this.newMessage,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
-    
-    this.selectedChat.messages.push(message);
-    this.selectedChat.lastMessage = this.newMessage;
-    this.selectedChat.lastMessageTime = 'Just now';
-    
-    this.newMessage = '';
+    if (!this.newMessage.trim() || !this.selectedChat || !this.currentPatientId || !this.selectedOtherUserId) return;
+    const content = this.newMessage.trim();
+    this.messageService.sendMessage(this.currentPatientId, this.selectedOtherUserId, content).subscribe(res => {
+      const m = res.data.message;
+      const mapped = { id: m.id, senderId: m.senderId, recipientId: m.recipientId, text: m.content, timestamp: new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
+      this.selectedChat.messages.push(mapped);
+      this.selectedChat.lastMessage = mapped.text;
+      this.selectedChat.lastMessageTime = 'Just now';
+      this.newMessage = '';
+    });
   }
 
   attachFile() {
@@ -566,5 +558,27 @@ export class PatientMessagesComponent implements OnInit {
   bookAppointment() {
     console.log('Booking appointment with', this.selectedChat?.doctorName);
     // Navigate to book consultation page
+  }
+
+  private loadConversations() {
+    if (!this.currentPatientId) return;
+    this.messageService.getConversations(this.currentPatientId).subscribe(res => {
+      const convs = res.data.conversations;
+      // Map to existing UI chat shape
+      this.allChats = convs.map(c => ({
+        id: c.otherUserId,
+        doctorName: c.name,
+        specialty: c.role === 'DOCTOR' ? 'Doctor' : '',
+        lastMessage: c.lastMessage,
+        lastMessageTime: new Date(c.lastMessageTime).toLocaleString(),
+        unreadCount: c.unreadCount,
+        isOnline: false,
+        messages: []
+      }));
+      this.filteredChats = this.allChats;
+      if (this.allChats.length > 0) {
+        this.selectChat(this.allChats[0].id);
+      }
+    });
   }
 }

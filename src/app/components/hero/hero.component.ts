@@ -19,7 +19,7 @@ import { AuthService, User } from '../../services/auth.service';
           <div class="hero-text">
             <h1 class="hero-title">
               <span class="title-line brand-chifaacare"><span class="part-chifaa">Chifaa</span><span class="part-care">Care</span></span>
-              <span class="title-line">– We Care, Wherever You Are</span>
+              <span class="title-line">We Care, Wherever You Are</span>
             </h1>
             <p class="hero-subtitle">
               Bringing Tunisian Expert Oncology Care to Libyan Patients — Without Leaving Home

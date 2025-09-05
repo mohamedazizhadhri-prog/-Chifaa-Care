@@ -1,4 +1,5 @@
 import express from 'express';
+import http from 'http';
 import cors from 'cors';
 import morgan from 'morgan';
 import { PrismaClient } from '@prisma/client';
@@ -6,11 +7,14 @@ import dotenv from 'dotenv';
 import path from 'path';
 import swaggerUi from 'swagger-ui-express';
 import swaggerSpec from './config/swagger';
+import { initSocket } from './socket';
 
 // Import routes
 import authRoutes from './routes/auth.routes';
 import profileRoutes from './routes/profile.routes';
 import appointmentRoutes from './routes/appointment.routes';
+import doctorRoutes from './routes/doctor.routes';
+import messageRoutes from './routes/message.routes';
 
 // Load environment variables
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
@@ -47,6 +51,9 @@ app.use('/api-docs',
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/profile', profileRoutes);
 app.use('/api/v1/appointments', appointmentRoutes);
+app.use('/api/v1/doctors', doctorRoutes);
+app.use('/api/v1/doctors', doctorRoutes);
+app.use('/api/v1/messages', messageRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -94,8 +101,10 @@ app.use((err: any, req: any, res: any, next: any) => {
   });
 });
 
-// Start the server
-const server = app.listen(port, () => {
+// Start the server with Socket.IO
+const server = http.createServer(app);
+initSocket(server);
+server.listen(port, () => {
   console.log(`Server is running on port ${port} in ${process.env.NODE_ENV || 'development'} mode`);
   console.log(`API Documentation: http://localhost:${port}/api-docs`);
 });

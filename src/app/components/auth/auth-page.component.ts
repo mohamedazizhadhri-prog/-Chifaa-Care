@@ -21,6 +21,9 @@ import { AuthService } from '../../services/auth.service';
           <button type="button" class="toggle-btn" [class.active]="mode==='signup'" (click)="switchMode('signup')">Sign Up</button>
         </div>
 
+        <div *ngIf="errorMessage" class="error-message">
+          {{ errorMessage }}
+        </div>
         <form (ngSubmit)="onSubmit()" #formRef="ngForm" [class.disabled]="submitting">
           <div class="grid">
             <!-- Common Fields -->
@@ -138,24 +141,59 @@ import { AuthService } from '../../services/auth.service';
     </div>
   `,
   styles: [`
+    .error-message {
+      background-color: #ffebee;
+      color: #c62828;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      border-left: 4px solid #c62828;
+      font-size: 0.9rem;
+      white-space: pre-line;
+    }
     :host { display:block; }
     .auth-page {
-      min-height: 100vh; display:grid; place-items:center; background: #fff;
-      padding: 2rem; background-image: radial-gradient(ellipse at top left, rgba(52,152,219,.08), transparent 40%),
-                                       radial-gradient(ellipse at bottom right, rgba(46,204,113,.08), transparent 40%);
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: #fff;
+      padding: 2vmin;
+      background-image: radial-gradient(ellipse at top left, rgba(52,152,219,.08), transparent 40%),
+                      radial-gradient(ellipse at bottom right, rgba(46,204,113,.08), transparent 40%);
     }
-    .auth-card { width: 100%; max-width: 480px; border-radius: 18px; padding: 1.5rem 1.25rem; background:#ffffff; position:relative; overflow:hidden; }
-    .logo { display:flex; align-items:center; gap:.6rem; justify-content:center; margin-bottom: .5rem; }
-    .logo-mark { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--c-green, #2ECC71), var(--c-blue, #3498DB)); box-shadow: var(--shadow-sm, 0 6px 18px rgba(0,0,0,.06)); }
-    .logo-text { font-weight: 700; font-size: 1.1rem; color:#2b3a49; }
+    .auth-card { 
+      width: 100%; 
+      max-width: min(90vw, 800px); 
+      min-width: 300px;
+      border-radius: 20px; 
+      padding: min(5vmax, 3rem); 
+      background: #ffffff; 
+      position: relative; 
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      margin: 2vmin;
+    }
+    .logo { display:flex; align-items:center; gap:.8rem; justify-content:center; margin-bottom: 1rem; }
+    .logo-mark { width: 42px; height: 42px; border-radius: 12px; background: linear-gradient(135deg, var(--c-green, #2ECC71), var(--c-blue, #3498DB)); box-shadow: var(--shadow-sm, 0 6px 18px rgba(0,0,0,.06)); }
+    .logo-text { font-weight: 700; font-size: 1.5rem; color:#2b3a49; }
 
     .mode-toggle { display:flex; gap:.5rem; justify-content:center; margin: .25rem 0 1rem; }
-    .toggle-btn { padding: .55rem .95rem; border-radius: 999px; border:1px solid rgba(52,152,219,.25); background:#fff; color:#2b3a49; cursor:pointer; transition: all .2s; }
+    .toggle-btn { 
+      padding: min(1vmax, 0.8rem) min(2vmax, 1.5rem); 
+      border-radius: 999px; 
+      border: 1px solid rgba(52,152,219,.25); 
+      background: #fff; 
+      color: #2b3a49; 
+      cursor: pointer; 
+      transition: all .2s; 
+      font-size: min(1.3vmax, 1.2rem);
+      white-space: nowrap;
+    }
     .toggle-btn.active, .toggle-btn:hover { background: rgba(52,152,219,.1); box-shadow: 0 6px 14px rgba(52,152,219,.15); }
 
     form.disabled { opacity:.7; pointer-events:none; }
-    .grid { display:grid; gap:.8rem; }
-    .form-row { display:grid; gap:.35rem; }
+    .grid { display:grid; gap: 1.25rem; }
+    .form-row { display:grid; gap: 0.5rem; margin-bottom: 1rem; }
     .form-row-group { 
       display: grid; 
       grid-template-columns: 1fr 1fr; 
@@ -168,12 +206,42 @@ import { AuthService } from '../../services/auth.service';
       font-family: inherit;
       line-height: 1.5;
     }
-    label { font-size:.85rem; color:#527086; }
-    .input { padding:.7rem .9rem; border-radius:12px; border:1px solid #e7edf3; outline:none; background:#fbfdff; transition: box-shadow .2s, border-color .2s; }
+    label { 
+      font-size: min(1.2vmax, 1.1rem); 
+      color: #527086; 
+      font-weight: 500; 
+      margin-bottom: 0.5vmax;
+    }
+    .input { 
+      padding: min(1.5vmax, 1.2rem) min(1.8vmax, 1.5rem); 
+      border-radius: 12px; 
+      border: 1px solid #e7edf3; 
+      outline: none; 
+      background: #fbfdff; 
+      transition: box-shadow .2s, border-color .2s; 
+      font-size: min(1.3vmax, 1.2rem);
+      width: 100%;
+      box-sizing: border-box;
+    }
     .input:focus { border-color: rgba(52,152,219,.6); box-shadow: 0 0 0 4px rgba(52,152,219,.15); }
 
-    .actions { display:flex; justify-content:center; margin-top: 1rem; min-height:52px; }
-    .btn.action-btn { position:relative; background: var(--c-blue, #3498DB); color:#fff; border:none; padding:.8rem 1.2rem; border-radius:14px; cursor:pointer; transition: transform .15s, box-shadow .2s, background .2s; box-shadow: 0 8px 18px rgba(52,152,219,.28); }
+    .actions { display:flex; justify-content:center; margin-top: 1.5rem; min-height:52px; }
+    .btn.action-btn { 
+      position: relative; 
+      background: var(--c-blue, #3498DB); 
+      color: #fff; 
+      border: none; 
+      padding: min(1.2vmax, 1rem) min(3vmax, 2.5rem); 
+      border-radius: 14px; 
+      cursor: pointer; 
+      transition: transform .15s, box-shadow .2s, background .2s; 
+      box-shadow: 0 8px 18px rgba(52,152,219,.28); 
+      font-size: min(1.4vmax, 1.2rem); 
+      font-weight: 500;
+      width: 100%;
+      max-width: 300px;
+      margin: 0 auto;
+    }
     .btn.action-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 26px rgba(52,152,219,.34); background:#2886c4; }
     .btn.action-btn:disabled { opacity:.8; cursor:not-allowed; }
 
@@ -212,66 +280,50 @@ import { AuthService } from '../../services/auth.service';
     @keyframes slideUp { to { transform: translateY(-20px); opacity:.98; } }
 
     /* Responsive */
-    @media (max-width: 520px){
-      .auth-card{ padding: 1.25rem .9rem; }
-      .id-badge{ max-width: 100%; }
+    @media (max-width: 520px) {
+      .auth-card { padding: 1.25rem .9rem; }
+      .id-badge { max-width: 100%; }
     }
   `]
 })
 export class AuthPageComponent {
   mode: 'login' | 'signup' = 'login';
-  submitting = false;
+  errorMessage: string = '';
+  isLoading: boolean = false;
+  submitting: boolean = false;
   showBadge = false;
   scannerRunning = false;
   badgeSlideUp = false;
   badgeRole: 'patient' | 'doctor' = 'patient';
   displayName = '';
 
-  form: {
+  form = {
     // Common fields
-    firstName: string;
-    lastName: string;
-    email: string;
-    password: string;
-    phone: string;
-    dateOfBirth: string;
-    gender: string;
-    role: 'patient' | 'doctor';
-    // Patient specific fields
-    bloodType?: string;
-    height?: number;
-    weight?: number;
-    // Doctor specific fields
-    specialization?: string;
-    bio?: string;
-    licenseNumber?: string;
-    experience?: number;
-    consultationFee?: number;
-  } = {
     firstName: '',
     lastName: '',
     email: '',
     password: '',
     phone: '',
     dateOfBirth: '',
-    gender: '',
-    role: 'patient',
-    // Initialize patient fields
+    gender: 'other',
+    role: 'patient' as 'patient' | 'doctor',
+    // Patient specific fields
     bloodType: '',
-    height: undefined,
-    weight: undefined,
-    // Initialize doctor fields
+    height: undefined as number | undefined,
+    weight: undefined as number | undefined,
+    // Doctor specific fields
     specialization: '',
     bio: '',
     licenseNumber: '',
-    experience: undefined,
-    consultationFee: undefined
+    experience: undefined as number | undefined,
+    consultationFee: undefined as number | undefined
   };
 
   constructor(private auth: AuthService, private router: Router) {}
 
   switchMode(mode: 'login' | 'signup') { 
     this.mode = mode; 
+    this.errorMessage = ''; // Clear any existing errors
     // Reset form when switching modes
     if (mode === 'login') {
       this.resetForm();
@@ -301,119 +353,106 @@ export class AuthPageComponent {
       password: '',
       phone: '',
       dateOfBirth: '',
-      gender: '',
-      role: 'patient',
+      gender: 'other',
+      role: 'patient' as 'patient' | 'doctor',
       bloodType: '',
-      height: undefined,
-      weight: undefined,
+      height: undefined as number | undefined,
+      weight: undefined as number | undefined,
       specialization: '',
       bio: '',
       licenseNumber: '',
-      experience: undefined,
-      consultationFee: undefined
+      experience: undefined as number | undefined,
+      consultationFee: undefined as number | undefined
     };
   }
 
-  onSubmit(){
-    console.log('Form submitted with:', this.form);
-    if(this.submitting) {
-      console.log('Already submitting, ignoring duplicate submission');
-      return;
-    }
-    
+  async onSubmit() {
+    this.errorMessage = '';
+    this.isLoading = true;
     this.submitting = true;
-    const role = this.form.role;
-    console.log('Starting', this.mode, 'process for role:', role);
 
-    const proceed = (name: string) => {
-      console.log('Proceeding with success for user:', name);
-      // Prepare animation content
-      this.displayName = name || this.form.email.split('@')[0];
-      this.badgeRole = role;
-
-      // Start morph: hide button text and show badge
-      setTimeout(() => {
-        console.log('Showing success badge');
-        this.showBadge = true;
-        // Start scanner
-        requestAnimationFrame(() => {
-          this.scannerRunning = true;
-        });
-      }, 250);
-
-      // Slide up near end
-      setTimeout(() => {
-        this.badgeSlideUp = true;
-      }, 1400);
-
-      // Navigate after ~2.5s total
-      setTimeout(() => {
-        console.log('Navigating to:', `/${role}/dashboard`);
-        this.router.navigate([`/${role}/dashboard`]);
-      }, 2500);
-    };
-
-    const handleError = (error: any) => {
-      console.error('Authentication error:', error);
-      this.submitting = false;
-      alert(`Error during ${this.mode}: ${error?.error?.message || error.message || 'Unknown error'}`);
-    };
-
-    if(this.mode === 'login'){
-      console.log('Attempting login with email:', this.form.email);
-      this.auth.login(this.form.email, this.form.password).subscribe({
-        next: ({ user }) => {
-          console.log('Login successful:', user);
-          this.submitting = false;
-          proceed(user.name);
-        },
-        error: handleError
-      });
-    } else {
-      const baseData = {
-        firstName: this.form.firstName,
-        lastName: this.form.lastName,
-        email: this.form.email,
-        password: this.form.password,
-        phone: this.form.phone,
-        dateOfBirth: this.form.dateOfBirth,
-        gender: this.form.gender,
-        role: this.form.role.toUpperCase()
-      };
-
-      let signupData: any = { ...baseData };
-
-      if (this.form.role === 'patient') {
-        signupData = {
-          ...signupData,
-          patientProfile: {
-            bloodType: this.form.bloodType,
-            height: this.form.height,
-            weight: this.form.weight
-          }
-        };
+    try {
+      if (this.mode === 'login') {
+        console.log('Attempting login with email:', this.form.email);
+        const result = await this.auth.login(this.form.email, this.form.password).toPromise();
+        this.handleAuthSuccess(result?.user);
       } else {
-        signupData = {
-          ...signupData,
-          doctorProfile: {
-            specialization: this.form.specialization,
-            bio: this.form.bio,
-            licenseNumber: this.form.licenseNumber,
-            experience: Number(this.form.experience),
-            consultationFee: Number(this.form.consultationFee)
-          }
+        // Format date for backend if it exists
+        const userData = {
+          ...this.form,
+          role: this.form.role.toUpperCase(),
+          dateOfBirth: this.form.dateOfBirth ? new Date(this.form.dateOfBirth).toISOString().split('T')[0] : ''
         };
+        
+        console.log('Attempting signup with data:', userData);
+        const result = await this.auth.signup(userData).toPromise();
+        this.handleAuthSuccess(result?.user);
       }
-      console.log('Attempting signup with data:', signupData);
+    } catch (error: any) {
+      this.handleError(error);
+    } finally {
+      this.isLoading = false;
+      this.submitting = false;
+    }
+  }
+
+  private handleAuthSuccess(user: any) {
+    if (!user) return;
+    
+    this.displayName = user.name || 
+      (this.mode === 'signup' 
+        ? `${this.form.firstName} ${this.form.lastName}`.trim() || 'User' 
+        : this.form.email.split('@')[0]);
+    
+    this.badgeRole = this.form.role;
+    this.showBadge = true;
+    this.scannerRunning = true;
+    
+    setTimeout(() => {
+      this.badgeSlideUp = true;
+    }, 1400);
+    
+    setTimeout(() => {
+      this.router.navigate([`/${this.form.role}/dashboard`]);
+    }, 2500);
+  }
+
+  private handleError(error: any) {
+    console.error('Auth error:', error);
+    
+    if (error?.error) {
+      const serverError = error.error;
       
-      this.auth.signup(signupData).subscribe({
-        next: (response) => {
-          console.log('Signup successful:', response);
-          this.submitting = false;
-          proceed(response.user?.name || `${this.form.firstName} ${this.form.lastName}`.trim() || 'User');
-        },
-        error: handleError
-      });
+      // Handle array of validation errors
+      if (Array.isArray(serverError)) {
+        this.errorMessage = serverError.map(err => err.msg || err.message).join('\n');
+      } 
+      // Handle error object with message
+      else if (typeof serverError === 'object' && serverError.message) {
+        this.errorMessage = serverError.message;
+        
+        // Handle field-specific validation errors
+        if (serverError.errors) {
+          const fieldErrors = Object.entries(serverError.errors)
+            .map(([field, messages]) => 
+              `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`
+            )
+            .join('\n');
+          this.errorMessage += '\n' + fieldErrors;
+        }
+      }
+      // Handle string error message
+      else if (typeof serverError === 'string') {
+        this.errorMessage = serverError;
+      }
+    } 
+    // Handle network errors
+    else if (error?.status === 0) {
+      this.errorMessage = 'Unable to connect to the server. Please check your internet connection.';
+    }
+    // Handle other error formats
+    else {
+      this.errorMessage = error?.message || 'An unexpected error occurred. Please try again.';
     }
   }
 }
