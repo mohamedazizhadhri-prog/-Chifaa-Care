@@ -2,16 +2,25 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterOutlet, RouterLinkActive, Router, NavigationEnd } from '@angular/router';
 import { AuthService, User } from '../../../services/auth.service';
+import { AvatarComponent } from '../avatar/avatar.component';
+import { ProfileService } from '../../../services/profile.service';
 
 @Component({
   selector: 'app-portal-layout',
   standalone: true,
-  imports: [CommonModule, RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [CommonModule, RouterLink, RouterLinkActive, RouterOutlet, AvatarComponent],
   template: `
     <div class="portal">
 
       <div class="portal-shell container">
         <aside class="portal-sidebar">
+          <div class="user-card">
+            <app-avatar [src]="avatarSrc" [name]="displayName" [size]="56" shape="circle" [badge]="isDoctor ? 'Dr' : null" [badgeColor]="isDoctor ? '#3b82f6' : '#22c55e'"></app-avatar>
+            <div class="user-meta">
+              <div class="name">{{ displayName || 'User' }}</div>
+              <div class="role" [class.doctor]="isDoctor" [class.patient]="isPatient">{{ isDoctor ? 'Doctor' : 'Patient' }}</div>
+            </div>
+          </div>
           <nav class="menu">
             <a routerLink="dashboard" routerLinkActive="active" class="menu-item"><i class="fa-solid fa-gauge-high"></i> <span>Dashboard</span></a>
             
@@ -49,8 +58,13 @@ import { AuthService, User } from '../../../services/auth.service';
     :host{display:block}
     .portal-topbar{ position: sticky; top: 0; z-index: 10; background: #fff; border-bottom: 1px solid #eef2f7; }
     .portal-shell{ display: flex; gap: 48px; align-items: start; padding: 16px 16px 16px 12px; min-height: calc(100vh - var(--nav-h)); max-width: 1400px; margin: 0 auto; }
-    .portal-sidebar{ position: sticky; top: 72px; align-self: start; width: 120px; flex-shrink: 0; }
+    .portal-sidebar{ position: sticky; top: 72px; align-self: start; width: 240px; flex-shrink: 0; }
     .portal-content{ background: #fff; border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow-sm); border: 1px solid rgba(0,0,0,0.04); }
+    .user-card{ display:flex; align-items:center; gap:12px; padding:12px; margin-bottom:8px; background: #ffffff; border: 1px solid #eef2f7; border-radius: 12px; box-shadow: var(--shadow-sm); }
+    .user-meta .name{ font-weight: 600; color:#0f172a; }
+    .user-meta .role{ font-size: 12px; color:#64748b; margin-top:2px; display:inline-block; padding:2px 6px; border-radius:999px; border:1px solid #e5e7eb; }
+    .user-meta .role.doctor{ color:#1d4ed8; border-color:#bfdbfe; background:#eff6ff; }
+    .user-meta .role.patient{ color:#15803d; border-color:#bbf7d0; background:#f0fdf4; }
     .menu { display:grid; gap:.4rem; }
     .menu-item { display:flex; align-items:center; gap:.6rem; padding:.7rem .9rem; border-radius:12px; color:#2b3a49; text-decoration:none; transition:background .2s, transform .15s; }
     .menu-item i{ color: var(--c-blue); }
@@ -70,8 +84,10 @@ export class PortalLayoutComponent implements OnInit {
   currentUser: User | null = null;
   isPatient = false;
   isDoctor = false;
+  displayName = '';
+  avatarSrc: string | null = null;
 
-  constructor(private router: Router, private authService: AuthService) {
+  constructor(private router: Router, private authService: AuthService, private profileService: ProfileService) {
     // Remember last visited patient/doctor sub-route to improve /account redirect UX
     this.router.events.subscribe(ev => {
       if (ev instanceof NavigationEnd) {
@@ -90,6 +106,21 @@ export class PortalLayoutComponent implements OnInit {
     if (this.currentUser) {
       this.isPatient = this.currentUser.role === 'patient';
       this.isDoctor = this.currentUser.role === 'doctor';
+      this.displayName = (this.currentUser as any).name || '';
     }
+    // Fetch profile image from backend
+    this.profileService.getMyProfile().subscribe({
+      next: (res: any) => {
+        const data = res?.data || res;
+        const img = data?.profileImage || data?.user?.profileImage;
+        if (img) this.avatarSrc = img;
+        if (!this.displayName) {
+          const fn = data?.firstName || data?.user?.firstName || '';
+          const ln = data?.lastName || data?.user?.lastName || '';
+          this.displayName = `${fn} ${ln}`.trim();
+        }
+      },
+      error: () => {}
+    });
   }
 }

@@ -8,6 +8,28 @@ const prisma = new PrismaClient();
 // Import the custom Express type declaration
 import { AuthenticatedRequest } from '../types/express';
 
+// Ensure list-like inputs are stored as JSON strings in the DB
+function normalizeJsonList(input: any): string | undefined {
+  if (input === undefined || input === null) return undefined;
+  if (Array.isArray(input)) return JSON.stringify(input);
+  if (typeof input === 'string') {
+    // If already a JSON string, keep as-is; otherwise, try to parse CSV-like
+    try {
+      const parsed = JSON.parse(input);
+      return JSON.stringify(parsed);
+    } catch {
+      // treat as comma-separated string
+      const arr = input
+        .split(',')
+        .map((s: string) => s.trim())
+        .filter((s: string) => s.length > 0);
+      return JSON.stringify(arr);
+    }
+  }
+  // Fallback: convert to string
+  return JSON.stringify([String(input)]);
+}
+
 export const getMyProfile = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user.id;
@@ -162,9 +184,9 @@ export const updateMyProfile = async (req: any, res: Response) => {
           licenseNumber: updateData.doctorProfile.licenseNumber,
           experience: updateData.doctorProfile.experience,
           consultationFee: updateData.doctorProfile.consultationFee,
-          availableDays: updateData.doctorProfile.availableDays,
-          availableHours: updateData.doctorProfile.availableHours,
-          languages: updateData.doctorProfile.languages,
+          availableDays: normalizeJsonList(updateData.doctorProfile.availableDays),
+          availableHours: normalizeJsonList(updateData.doctorProfile.availableHours),
+          languages: normalizeJsonList(updateData.doctorProfile.languages),
         },
         create: {
           userId,
@@ -173,9 +195,9 @@ export const updateMyProfile = async (req: any, res: Response) => {
           licenseNumber: updateData.doctorProfile.licenseNumber,
           experience: updateData.doctorProfile.experience,
           consultationFee: updateData.doctorProfile.consultationFee,
-          availableDays: updateData.doctorProfile.availableDays || [],
-          availableHours: updateData.doctorProfile.availableHours || [],
-          languages: updateData.doctorProfile.languages || [],
+          availableDays: normalizeJsonList(updateData.doctorProfile.availableDays) ?? JSON.stringify([]),
+          availableHours: normalizeJsonList(updateData.doctorProfile.availableHours) ?? JSON.stringify([]),
+          languages: normalizeJsonList(updateData.doctorProfile.languages) ?? JSON.stringify([]),
         },
       });
     } else if (userRole === 'PATIENT' && updateData.patientProfile) {
@@ -185,16 +207,16 @@ export const updateMyProfile = async (req: any, res: Response) => {
           bloodType: updateData.patientProfile.bloodType,
           height: updateData.patientProfile.height,
           weight: updateData.patientProfile.weight,
-          allergies: updateData.patientProfile.allergies,
-          medications: updateData.patientProfile.medications,
+          allergies: normalizeJsonList(updateData.patientProfile.allergies),
+          medications: normalizeJsonList(updateData.patientProfile.medications),
         },
         create: {
           userId,
           bloodType: updateData.patientProfile.bloodType,
           height: updateData.patientProfile.height,
           weight: updateData.patientProfile.weight,
-          allergies: updateData.patientProfile.allergies || [],
-          medications: updateData.patientProfile.medications || [],
+          allergies: normalizeJsonList(updateData.patientProfile.allergies) ?? JSON.stringify([]),
+          medications: normalizeJsonList(updateData.patientProfile.medications) ?? JSON.stringify([]),
         },
       });
     }
@@ -264,7 +286,6 @@ export const updatePassword = async (req: any, res: Response) => {
       where: { id: userId },
       data: {
         password: hashedPassword,
-        passwordChangedAt: new Date(),
       },
     });
 
