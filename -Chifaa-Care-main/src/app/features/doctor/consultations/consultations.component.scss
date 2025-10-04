@@ -1,0 +1,235 @@
+@use '@angular/material' as mat;
+@import '~@angular/material/theming';
+
+.consultations-container {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.consultations-card {
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+mat-card-header {
+  background-color: #f5f5f5;
+  padding: 16px 24px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  align-items: center;
+  
+  .mat-card-title {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 500;
+  }
+  
+  .mat-card-subtitle {
+    margin: 4px 0 0;
+  }
+  
+  .refresh-button {
+    margin-left: auto;
+  }
+}
+
+mat-card-content {
+  padding: 0 !important;
+}
+
+.loading-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 0;
+  
+  p {
+    margin-top: 16px;
+    color: #666;
+  }
+}
+
+.no-consultations {
+  text-align: center;
+  padding: 40px 0;
+  color: #999;
+  
+  mat-icon {
+    font-size: 48px;
+    height: 48px;
+    width: 48px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+  }
+  
+  p {
+    margin: 8px 0 0;
+  }
+}
+
+.table-container {
+  overflow-x: auto;
+  padding: 16px;
+}
+
+.consultations-table {
+  width: 100%;
+  border-collapse: collapse;
+  
+  th {
+    text-align: left;
+    font-weight: 500;
+    color: rgba(0, 0, 0, 0.87);
+    font-size: 14px;
+    padding: 0 16px 16px;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  
+  td {
+    padding: 16px;
+    border-bottom: 1px solid #f0f0f0;
+    vertical-align: middle;
+  }
+  
+  tr:last-child td {
+    border-bottom: none;
+  }
+  
+  .patient-info {
+    display: flex;
+    align-items: center;
+  }
+  
+  .patient-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #3f51b5;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 500;
+    margin-right: 12px;
+    flex-shrink: 0;
+  }
+  
+  .patient-details {
+    .patient-name {
+      font-weight: 500;
+      line-height: 1.2;
+    }
+    
+    .patient-email {
+      font-size: 12px;
+      color: #666;
+      margin-top: 2px;
+    }
+  }
+  
+  .status-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: capitalize;
+    
+    &.status-pending {
+      background-color: #fff3e0;
+      color: #e65100;
+    }
+    
+    &.status-confirmed {
+      background-color: #e8f5e9;
+      color: #2e7d32;
+    }
+    
+    &.status-cancelled {
+      background-color: #ffebee;
+      color: #c62828;
+    }
+    
+    &.status-completed {
+      background-color: #f5f5f5;
+      color: #616161;
+    }
+  }
+  
+  .actions-cell {
+    white-space: nowrap;
+    text-align: right;
+    
+    .mat-icon {
+      color: #666;
+    }
+    
+    .no-actions {
+      color: #999;
+      font-style: italic;
+    }
+  }
+  
+  // Row highlighting based on status
+  .pending-row {
+    background-color: #fff8e1;
+    
+    &:hover {
+      background-color: #ffecb3 !important;
+    }
+  }
+  
+  .confirmed-row {
+    background-color: #f1f8e9;
+    
+    &:hover {
+      background-color: #dcedc8 !important;
+    }
+  }
+  
+  .cancelled-row {
+    background-color: #ffebee;
+    
+    &:hover {
+      background-color: #ffcdd2 !important;
+    }
+  }
+  
+  tr:hover {
+    background-color: #f9f9f9;
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 960px) {
+  .consultations-container {
+    padding: 16px;
+  }
+  
+  .consultations-table {
+    display: block;
+    
+    th, td {
+      padding: 12px 8px;
+    }
+    
+    .patient-avatar {
+      width: 32px;
+      height: 32px;
+      font-size: 12px;
+    }
+    
+    .patient-details {
+      .patient-name {
+        font-size: 14px;
+      }
+      
+      .patient-email {
+        font-size: 11px;
+      }
+    }
+  }
+}

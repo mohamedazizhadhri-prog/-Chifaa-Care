@@ -1,0 +1,209 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Track call sessions between users
+model CallLog {
+  id           String   @id @default(uuid())
+  callerId     String
+  calleeId     String
+  startedAt    DateTime @default(now())
+  endedAt      DateTime?
+  durationSec  Int?     // computed on end
+  status       String   @default("ONGOING") // ONGOING | ENDED | DECLINED
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  String          @id @default(uuid())
+  email               String          @unique
+  password            String
+  firstName           String
+  lastName            String
+  phone               String?
+  dateOfBirth         DateTime?
+  gender              String?
+  profileImage        String?
+  role                String          @default("PATIENT")
+  isEmailVerified     Boolean         @default(false)
+  isActive            Boolean         @default(true)
+  lastLogin           DateTime?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  doctorAppointments  Appointment[]   @relation("DoctorAppointments")
+  patientAppointments Appointment[]   @relation("PatientAppointments")
+  doctorProfile       DoctorProfile?
+  receivedMessages    Message[]       @relation("ReceivedMessages")
+  sentMessages        Message[]       @relation("SentMessages")
+  patientProfile      PatientProfile?
+  // Relations for treatment plans and notes
+  patientTreatmentPlans TreatmentPlan[] @relation("PatientTreatmentPlans")
+  doctorTreatmentPlans  TreatmentPlan[] @relation("DoctorTreatmentPlans")
+  treatmentNotes        TreatmentNote[]
+}
+
+model DoctorProfile {
+  id              String      @id @default(uuid())
+  userId          String      @unique
+  specialization  String?
+  bio             String?
+  licenseNumber   String?
+  experience      Int?
+  consultationFee Float?
+  availableDays   String      @default("[]")
+  availableHours  String      @default("[]")
+  languages       String      @default("[]")
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  user            User        @relation(fields: [userId], references: [id])
+  education       Education[]
+}
+
+model PatientProfile {
+  id                String             @id @default(uuid())
+  userId            String             @unique
+  bloodType         String?
+  height            Float?
+  weight            Float?
+  allergies         String             @default("[]")
+  medications       String             @default("[]")
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  emergencyContacts EmergencyContact[]
+  insuranceInfo     InsuranceInfo?
+  medicalHistory    MedicalHistory[]
+  user              User               @relation(fields: [userId], references: [id])
+}
+
+model Education {
+  id              String        @id @default(uuid())
+  doctorProfileId String
+  degree          String
+  institution     String
+  fieldOfStudy    String
+  startYear       Int
+  endYear         Int?
+  description     String?
+  doctorProfile   DoctorProfile @relation(fields: [doctorProfileId], references: [id])
+}
+
+model MedicalHistory {
+  id               String         @id @default(uuid())
+  patientProfileId String
+  condition        String
+  diagnosisDate    DateTime
+  status           String
+  notes            String?
+  attachments      String         @default("[]")
+  patientProfile   PatientProfile @relation(fields: [patientProfileId], references: [id])
+}
+
+model EmergencyContact {
+  id               String         @id @default(uuid())
+  patientProfileId String
+  name             String
+  relationship     String
+  phone            String
+  email            String?
+  address          String?
+  isPrimary        Boolean        @default(false)
+  patientProfile   PatientProfile @relation(fields: [patientProfileId], references: [id])
+}
+
+model InsuranceInfo {
+  id               String         @id @default(uuid())
+  patientProfileId String         @unique
+  provider         String
+  policyNumber     String
+  groupNumber      String?
+  validUntil       DateTime
+  isPrimary        Boolean        @default(true)
+  patientProfile   PatientProfile @relation(fields: [patientProfileId], references: [id])
+}
+
+model Appointment {
+  id                    String    @id @default(uuid())
+  patientId             String
+  doctorId              String
+  appointmentDate       DateTime
+  endTime               DateTime
+  status                String    @default("PENDING")
+  reason                String
+  notes                 String?
+  diagnosis             String?
+  prescription          String?
+  followUpDate          DateTime?
+  isFollowUp            Boolean   @default(false)
+  originalAppointmentId String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  doctor                User      @relation("DoctorAppointments", fields: [doctorId], references: [id])
+  patient               User      @relation("PatientAppointments", fields: [patientId], references: [id])
+  messages              Message[]
+}
+
+model Message {
+  id            String       @id @default(uuid())
+  senderId      String
+  recipientId   String
+  content       String
+  isRead        Boolean      @default(false)
+  appointmentId String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id])
+  recipient     User         @relation("ReceivedMessages", fields: [recipientId], references: [id])
+  sender        User         @relation("SentMessages", fields: [senderId], references: [id])
+}
+
+// Treatment management models
+model TreatmentPlan {
+  id         String   @id @default(uuid())
+  patientId  String
+  doctorId   String
+  title      String
+  diagnosis  String?
+  goals      String?
+  carePlan   String?
+  status     String   @default("ACTIVE") // ACTIVE | ON_HOLD | COMPLETED
+  startDate  DateTime @default(now())
+  endDate    DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  patient    User     @relation("PatientTreatmentPlans", fields: [patientId], references: [id])
+  doctor     User     @relation("DoctorTreatmentPlans", fields: [doctorId], references: [id])
+  notes      TreatmentNote[]
+  medications Medication[]
+}
+
+model TreatmentNote {
+  id        String   @id @default(uuid())
+  planId    String
+  doctorId  String
+  content   String
+  isImportant Boolean @default(false)
+  createdAt DateTime @default(now())
+
+  plan      TreatmentPlan @relation(fields: [planId], references: [id])
+  doctor    User          @relation(fields: [doctorId], references: [id])
+}
+
+model Medication {
+  id         String   @id @default(uuid())
+  planId     String
+  name       String
+  dose       String?
+  frequency  String?
+  route      String?
+  instructions String?
+  startDate  DateTime @default(now())
+  endDate    DateTime?
+  isActive   Boolean  @default(true)
+
+  plan       TreatmentPlan @relation(fields: [planId], references: [id])
+}
