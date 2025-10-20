@@ -31,9 +31,12 @@ export class AccountRedirectComponent {
     // Prefer last visited per role
     const lastPatient = sessionStorage.getItem('lastPatientRoute') || '/patient/dashboard';
     const lastDoctor = sessionStorage.getItem('lastDoctorRoute') || '/doctor/dashboard';
+    const lastAdmin = sessionStorage.getItem('lastAdminRoute') || '/admin/dashboard';
 
     if (role === 'doctor') {
       this.router.navigateByUrl(lastDoctor);
+    } else if (role === 'admin') {
+      this.router.navigateByUrl(lastAdmin);
     } else {
       this.router.navigateByUrl(lastPatient);
     }

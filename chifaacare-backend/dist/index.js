@@ -10,18 +10,40 @@ const morgan_1 = __importDefault(require("morgan"));
 const client_1 = require("@prisma/client");
 const dotenv_1 = __importDefault(require("dotenv"));
 const path_1 = __importDefault(require("path"));
+const fs_1 = __importDefault(require("fs"));
 const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
 const swagger_1 = __importDefault(require("./config/swagger"));
 const socket_1 = require("./socket");
-// Import routes
+// Load environment variables
+// When compiled, __dirname will be `dist/`. The real .env is at projectRoot/.env or backend/.env.
+// Try common locations in order: one level up (backend/.env), two levels up (repo root), and CWD fallback.
+(() => {
+    const candidates = [
+        path_1.default.resolve(__dirname, '../.env'),
+        path_1.default.resolve(__dirname, '../../.env'),
+        path_1.default.resolve(process.cwd(), '.env'),
+    ];
+    for (const p of candidates) {
+        if (fs_1.default.existsSync(p)) {
+            dotenv_1.default.config({ path: p });
+            console.log(`[env] Loaded environment from ${p}`);
+            return;
+        }
+    }
+    // Fallback to default behavior
+    dotenv_1.default.config();
+    console.warn('[env] Loaded environment from default .env resolution (no explicit file found)');
+})();
+// Import routes AFTER env is loaded to ensure downstream modules pick up env vars
 const auth_routes_1 = __importDefault(require("./routes/auth.routes"));
 const profile_routes_1 = __importDefault(require("./routes/profile.routes"));
 const appointment_routes_1 = __importDefault(require("./routes/appointment.routes"));
 const doctor_routes_1 = __importDefault(require("./routes/doctor.routes"));
 const message_routes_1 = __importDefault(require("./routes/message.routes"));
 const patient_routes_1 = __importDefault(require("./routes/patient.routes"));
-// Load environment variables
-dotenv_1.default.config({ path: path_1.default.resolve(__dirname, '../../.env') });
+const treatment_routes_1 = __importDefault(require("./routes/treatment.routes"));
+const records_routes_1 = __importDefault(require("./routes/records.routes"));
+const admin_routes_1 = __importDefault(require("./routes/admin.routes"));
 // Initialize Express app
 const app = (0, express_1.default)();
 const port = process.env.PORT || 3000;
@@ -29,7 +51,9 @@ const port = process.env.PORT || 3000;
 const prisma = new client_1.PrismaClient();
 // Middleware
 app.use((0, cors_1.default)());
-app.use(express_1.default.json());
+// Increase body size limits to support base64 images for profile uploads
+app.use(express_1.default.json({ limit: '5mb' }));
+app.use(express_1.default.urlencoded({ extended: true, limit: '5mb' }));
 app.use((0, morgan_1.default)('dev'));
 // Log all requests
 app.use((req, res, next) => {
@@ -50,6 +74,10 @@ app.use('/api/v1/doctors', doctor_routes_1.default);
 app.use('/api/v1/doctors', doctor_routes_1.default);
 app.use('/api/v1/messages', message_routes_1.default);
 app.use('/api/v1/patients', patient_routes_1.default);
+app.use('/api/v1/treatments', treatment_routes_1.default);
+app.use('/api/v1/records', records_routes_1.default);
+// Admin API (non-versioned as per requirement)
+app.use('/api/admin', admin_routes_1.default);
 // Health check endpoint
 app.get('/api/health', (req, res) => {
     res.status(200).json({

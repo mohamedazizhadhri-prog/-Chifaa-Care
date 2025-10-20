@@ -172,15 +172,12 @@ const protect = async (req, res, next) => {
                 message: 'The user belonging to this token no longer exists.',
             });
         }
-        // 4) Check if user changed password after the token was issued
-        if (currentUser.passwordChangedAt) {
-            const changedTimestamp = Math.floor(new Date(currentUser.passwordChangedAt).getTime() / 1000);
-            if (decoded.iat < changedTimestamp) {
-                return res.status(401).json({
-                    status: 'error',
-                    message: 'User recently changed password! Please log in again.',
-                });
-            }
+        // 4) Check if user is active
+        if (!currentUser.isActive) {
+            return res.status(401).json({
+                status: 'error',
+                message: 'Your account has been deactivated.',
+            });
         }
         // GRANT ACCESS TO PROTECTED ROUTE
         req.user = currentUser;

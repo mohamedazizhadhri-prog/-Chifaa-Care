@@ -2,12 +2,14 @@ import { Component, OnInit, HostListener, ElementRef, ViewChild } from '@angular
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { LoginModalComponent } from '../login-modal/login-modal.component';
-import { AuthService, User } from '../../services/auth.service';
+import { AuthService } from '../../services/auth.service';
+import type { User } from '../../services/auth.service';
 
 @Component({
   selector: 'app-navbar',
   standalone: true,
   imports: [CommonModule, RouterLink, RouterLinkActive, LoginModalComponent],
+  providers: [AuthService],
   template: `
     <nav class="navbar" [class.scrolled]="isScrolled">
       <div class="navbar-container">
@@ -151,7 +153,7 @@ export class NavbarComponent implements OnInit {
 
   // Overlay animation state
   showBadgeOverlay = false;
-  overlayRole: 'patient' | 'doctor' = 'patient';
+  overlayRole: 'patient' | 'doctor' | 'admin' | 'clinic' = 'patient';
   overlayName = '';
   overlayScanner = false;
   overlaySlideUp = false;
@@ -201,7 +203,7 @@ export class NavbarComponent implements OnInit {
     this.isMobileMenuOpen = false;
   }
 
-  onAuthAnimation(evt: { role: 'patient'|'doctor'; name: string; durationMs: number }) {
+  onAuthAnimation(evt: { role: 'patient'|'doctor'|'admin'|'clinic'; name: string; durationMs: number }) {
     // Immediately hide modal
     this.isLoginModalOpen = false;
     // Configure overlay
@@ -215,12 +217,12 @@ export class NavbarComponent implements OnInit {
     setTimeout(() => { this.showBadgeOverlay = false; this.overlayScanner = false; this.overlaySlideUp = false; }, evt.durationMs);
   }
 
-  getRoleAvatar(role?: 'patient'|'doctor'): string {
+  getRoleAvatar(role?: 'patient'|'doctor'|'admin'|'clinic'): string {
     // Prefer PNG if available (as per user's provided assets), otherwise fall back to SVG
     return role === 'doctor' ? 'assets/avatars/doc.png' : 'assets/avatars/pat.png';
   }
 
-  onAvatarError(ev: Event, role?: 'patient'|'doctor') {
+  onAvatarError(ev: Event, role?: 'patient'|'doctor'|'admin'|'clinic') {
     const img = ev.target as HTMLImageElement;
     // Fallback to SVG if PNG missing
     img.src = role === 'doctor' ? 'assets/avatars/doc.svg' : 'assets/avatars/pat.svg';

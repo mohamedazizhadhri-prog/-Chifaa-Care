@@ -40,6 +40,8 @@ import messageRoutes from './routes/message.routes';
 import patientRoutes from './routes/patient.routes';
 import treatmentRoutes from './routes/treatment.routes';
 import recordsRoutes from './routes/records.routes';
+import adminRoutes from './routes/admin.routes';
+import clinicRoutes from './routes/clinic.routes';
 
 // Initialize Express app
 const app = express();
@@ -81,6 +83,10 @@ app.use('/api/v1/messages', messageRoutes);
 app.use('/api/v1/patients', patientRoutes);
 app.use('/api/v1/treatments', treatmentRoutes);
 app.use('/api/v1/records', recordsRoutes);
+// Admin API (non-versioned as per requirement)
+app.use('/api/admin', adminRoutes);
+// Clinic API
+app.use('/api/clinic', clinicRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

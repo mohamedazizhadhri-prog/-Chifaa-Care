@@ -435,3 +435,12 @@ model Notification {
   @@index([isRead])
   @@index([createdAt])
 }
+
+// Key-Value style system settings for admin management
+model SystemSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

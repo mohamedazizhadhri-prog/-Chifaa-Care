@@ -8,6 +8,30 @@ const client_1 = require("@prisma/client");
 const express_validator_1 = require("express-validator");
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const prisma = new client_1.PrismaClient();
+// Ensure list-like inputs are stored as JSON strings in the DB
+function normalizeJsonList(input) {
+    if (input === undefined || input === null)
+        return undefined;
+    if (Array.isArray(input))
+        return JSON.stringify(input);
+    if (typeof input === 'string') {
+        // If already a JSON string, keep as-is; otherwise, try to parse CSV-like
+        try {
+            const parsed = JSON.parse(input);
+            return JSON.stringify(parsed);
+        }
+        catch (_a) {
+            // treat as comma-separated string
+            const arr = input
+                .split(',')
+                .map((s) => s.trim())
+                .filter((s) => s.length > 0);
+            return JSON.stringify(arr);
+        }
+    }
+    // Fallback: convert to string
+    return JSON.stringify([String(input)]);
+}
 const getMyProfile = async (req, res) => {
     try {
         const userId = req.user.id;
@@ -111,6 +135,7 @@ const getMyProfile = async (req, res) => {
 };
 exports.getMyProfile = getMyProfile;
 const updateMyProfile = async (req, res) => {
+    var _a, _b, _c, _d, _e;
     try {
         const errors = (0, express_validator_1.validationResult)(req);
         if (!errors.isEmpty()) {
@@ -152,9 +177,9 @@ const updateMyProfile = async (req, res) => {
                     licenseNumber: updateData.doctorProfile.licenseNumber,
                     experience: updateData.doctorProfile.experience,
                     consultationFee: updateData.doctorProfile.consultationFee,
-                    availableDays: updateData.doctorProfile.availableDays,
-                    availableHours: updateData.doctorProfile.availableHours,
-                    languages: updateData.doctorProfile.languages,
+                    availableDays: normalizeJsonList(updateData.doctorProfile.availableDays),
+                    availableHours: normalizeJsonList(updateData.doctorProfile.availableHours),
+                    languages: normalizeJsonList(updateData.doctorProfile.languages),
                 },
                 create: {
                     userId,
@@ -163,9 +188,9 @@ const updateMyProfile = async (req, res) => {
                     licenseNumber: updateData.doctorProfile.licenseNumber,
                     experience: updateData.doctorProfile.experience,
                     consultationFee: updateData.doctorProfile.consultationFee,
-                    availableDays: updateData.doctorProfile.availableDays || [],
-                    availableHours: updateData.doctorProfile.availableHours || [],
-                    languages: updateData.doctorProfile.languages || [],
+                    availableDays: (_a = normalizeJsonList(updateData.doctorProfile.availableDays)) !== null && _a !== void 0 ? _a : JSON.stringify([]),
+                    availableHours: (_b = normalizeJsonList(updateData.doctorProfile.availableHours)) !== null && _b !== void 0 ? _b : JSON.stringify([]),
+                    languages: (_c = normalizeJsonList(updateData.doctorProfile.languages)) !== null && _c !== void 0 ? _c : JSON.stringify([]),
                 },
             });
         }
@@ -176,16 +201,16 @@ const updateMyProfile = async (req, res) => {
                     bloodType: updateData.patientProfile.bloodType,
                     height: updateData.patientProfile.height,
                     weight: updateData.patientProfile.weight,
-                    allergies: updateData.patientProfile.allergies,
-                    medications: updateData.patientProfile.medications,
+                    allergies: normalizeJsonList(updateData.patientProfile.allergies),
+                    medications: normalizeJsonList(updateData.patientProfile.medications),
                 },
                 create: {
                     userId,
                     bloodType: updateData.patientProfile.bloodType,
                     height: updateData.patientProfile.height,
                     weight: updateData.patientProfile.weight,
-                    allergies: updateData.patientProfile.allergies || [],
-                    medications: updateData.patientProfile.medications || [],
+                    allergies: (_d = normalizeJsonList(updateData.patientProfile.allergies)) !== null && _d !== void 0 ? _d : JSON.stringify([]),
+                    medications: (_e = normalizeJsonList(updateData.patientProfile.medications)) !== null && _e !== void 0 ? _e : JSON.stringify([]),
                 },
             });
         }
@@ -248,7 +273,6 @@ const updatePassword = async (req, res) => {
             where: { id: userId },
             data: {
                 password: hashedPassword,
-                passwordChangedAt: new Date(),
             },
         });
         res.status(200).json({
