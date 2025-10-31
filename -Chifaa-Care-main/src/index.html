@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>ChifaaCare</title>
+  <base href="/">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <!-- Healing Heart Splash Styles -->
+  <style id="splash-styles">
+    :root{ --bg:#f4f9ff; --bg-alt:#e8f3ff; --blue:#2b6cb0; --green:#10b981; --text:#0f172a; --muted:#64748b; --pulse:rgba(43,108,176,.45);} 
+    #healing-splash{ position:fixed; inset:0; display:grid; place-items:center; background: radial-gradient(1200px 800px at 50% -20%, var(--bg-alt), var(--bg)); z-index:9999; }
+    #healing-splash[hidden]{ display:none !important; }
+    #healing-splash .wrap{ position:relative; width:100%; max-width:780px; padding:24px; display:grid; place-items:center; }
+    #healing-splash .bg-icons{ position:absolute; inset:0; pointer-events:none; opacity:.7; }
+    #healing-splash .icon{ position:absolute; animation:floatY var(--dur,6s) ease-in-out infinite; filter: drop-shadow(0 6px 10px rgba(43,108,176,0.15)); }
+    #healing-splash .icon svg{ display:block; width:var(--sz,40px); height:var(--sz,40px); }
+    @keyframes floatY{ 0%,100%{ transform:translateY(0)} 50%{ transform:translateY(-14px)} }
+    #healing-splash .heart-stack{ position:relative; width: clamp(160px, 42vw, 320px); aspect-ratio:1/1; display:grid; place-items:center; }
+    #healing-splash .heart-glow{ position:absolute; width:120%; height:120%; border-radius:50%; background: radial-gradient(closest-side, var(--pulse), transparent 70%); animation:pulse 2.2s ease-in-out infinite; filter:blur(10px); }
+    @keyframes pulse{ 0%,100%{ transform:scale(1); opacity:.55 } 50%{ transform:scale(1.06); opacity:.9 } }
+    #healing-splash .frames{ position:relative; width:100%; height:100%; }
+    #healing-splash .frames img{ position:absolute; inset:0; width:100%; height:100%; object-fit:contain; opacity:0; transform:translateY(6px) scale(.985); transition: opacity .6s ease, transform .6s ease; }
+    #healing-splash .frames img.active{ opacity:1; transform:translateY(0) scale(1); }
+    #healing-splash .text{ margin-top:16px; min-height:32px; font-weight:800; letter-spacing:.2px; text-align:center; font-size:clamp(16px,2.8vw,22px); color:var(--blue); position:relative; }
+    #healing-splash .line{ position:absolute; inset:0; display:grid; place-items:center; opacity:0; transform:translateY(10px); transition:opacity .45s ease, transform .45s ease; }
+    #healing-splash .line.show{ opacity:1; transform:translateY(0); }
+    #healing-splash .progress{ margin-top:14px; width:min(72vw,420px); height:8px; background:rgba(43,108,176,.12); border-radius:999px; overflow:hidden; box-shadow:inset 0 0 0 1px rgba(255,255,255,.6); }
+    #healing-splash .bar{ height:100%; width:0%; background:linear-gradient(90deg,#60a5fa,#34d399); border-radius:999px; transition:width .3s ease; box-shadow:0 6px 16px rgba(16,185,129,.28); }
+    #healing-splash .slogan{ margin-top:12px; text-align:center; color:var(--muted); font-size:13px; font-weight:600; letter-spacing:.2px; }
+    @media(max-width:480px){ #healing-splash .icon{ opacity:.6 } #healing-splash .progress{ height:7px } }
+  </style>
+</head>
+<body>
+  <!-- Healing Heart Splash (runs before Angular bootstraps) -->
+  <div id="healing-splash" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Loading content" data-duration="1500">
+    <div class="wrap">
+      <div class="bg-icons" aria-hidden="true">
+        <div class="icon" style="--sz:42px; left:8%; top:12%; --dur:7s;">
+          <svg viewBox="0 0 64 64"><defs><linearGradient id="pillA" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e0f2fe"/><stop offset="1" stop-color="#dbeafe"/></linearGradient></defs><g transform="rotate(-28 32 32)"><rect x="6" y="22" width="52" height="20" rx="10" fill="url(#pillA)" stroke="#93c5fd" stroke-width="1"/><rect x="6" y="22" width="26" height="20" rx="10" fill="#ef4444" opacity=".9"/></g></svg>
+        </div>
+        <div class="icon" style="--sz:36px; right:10%; top:18%; --dur:6.6s;">
+          <svg viewBox="0 0 64 64"><rect x="28" y="10" width="8" height="44" rx="4" fill="#22c55e"/><rect x="10" y="28" width="44" height="8" rx="4" fill="#22c55e"/></svg>
+        </div>
+        <div class="icon" style="--sz:56px; left:14%; bottom:10%; --dur:7.4s;">
+          <svg viewBox="0 0 64 64"><path d="M14 10 v16 c0 8 6 14 14 14 s14 -6 14 -14 V10" fill="none" stroke="#0ea5e9" stroke-width="4" stroke-linecap="round"/><circle cx="42" cy="26" r="3.5" fill="#0ea5e9"/><path d="M42 26 c0 10 10 10 10 0" fill="none" stroke="#0ea5e9" stroke-width="4" stroke-linecap="round"/><circle cx="54" cy="26" r="4.5" fill="#34d399"/></svg>
+        </div>
+        <div class="icon" style="--sz:30px; right:22%; bottom:16%; --dur:6.8s; opacity:.55;">
+          <svg viewBox="0 0 64 64"><rect x="28" y="10" width="8" height="44" rx="4" fill="#60a5fa"/><rect x="10" y="28" width="44" height="8" rx="4" fill="#60a5fa"/></svg>
+        </div>
+        <div class="icon" style="--sz:34px; left:28%; top:30%; --dur:7.2s; opacity:.55;">
+          <svg viewBox="0 0 64 64"><g transform="rotate(-28 32 32)"><rect x="6" y="22" width="52" height="20" rx="10" fill="#fde68a" stroke="#fbbf24" stroke-width="1"/><rect x="6" y="22" width="26" height="20" rx="10" fill="#f87171" opacity=".9"/></g></svg>
+        </div>
+      </div>
+
+      <div class="heart-stack">
+        <div class="heart-glow" aria-hidden="true"></div>
+        <div class="frames">
+          <!-- Replace src with your AI PNGs (transparent, same size/position) -->
+          <img id="s-heart-0" class="active" alt="Sad heart - cracked and bandaged"
+               src="https://images.placeholders.dev/?width=800&height=800&text=Heart%200%25%0Asad%2C%20cracked%2C%20bandages&bgColor=%23ffffff00&textColor=%23999" />
+          <img id="s-heart-50" alt="Healing heart - glowing cracks, fewer bandages, faint smile"
+               src="https://images.placeholders.dev/?width=800&height=800&text=Heart%2050%25%0Apartial%20heal&bgColor=%23ffffff00&textColor=%23999" />
+          <img id="s-heart-100" alt="Healed heart - glowing, big smile, thumbs-up"
+               src="https://images.placeholders.dev/?width=800&height=800&text=Heart%20100%25%0Ahealed%2C%20thumbs%20up&bgColor=%23ffffff00&textColor=%23999" />
+        </div>
+        <div class="text" aria-live="polite" aria-atomic="true">
+          <div id="s-txt-0" class="line show">Applying First Aid…</div>
+          <div id="s-txt-50" class="line">Restoring Vital Signs…</div>
+          <div id="s-txt-100" class="line">Ready for Checkup!</div>
+        </div>
+        <div class="progress" aria-hidden="true"><div class="bar" id="s-progress"></div></div>
+        <div class="slogan">ChifaaCare — Caring hearts. Smarter healthcare.</div>
+      </div>
+    </div>
+  </div>
+
+  <app-root>Loading...</app-root>
+
+  <!-- Healing Heart Splash Script -->
+  <script>
+    (function(){
+      // Duration is configurable via data-duration (ms). Default 1500 if not set.
+      const splash = document.getElementById('healing-splash');
+      const TOTAL = Number(splash?.dataset?.duration || '1500');
+      if (!splash) return;
+      const bar = document.getElementById('s-progress');
+      const frames = [
+        document.getElementById('s-heart-0'),
+        document.getElementById('s-heart-50'),
+        document.getElementById('s-heart-100')
+      ];
+      const texts = [
+        document.getElementById('s-txt-0'),
+        document.getElementById('s-txt-50'),
+        document.getElementById('s-txt-100')
+      ];
+      const wrap = splash; // role="progressbar"
+      const MIN_SHOW = 700;              // minimum visual time for nicer UX
+      const HARD_CAP = Math.max(TOTAL, 5000); // absolute maximum time the splash can stay
+      const bootStart = Date.now();
+
+      function showFrame(idx){ frames.forEach((img,i)=>img.classList.toggle('active', i===idx)); texts.forEach((t,i)=>t.classList.toggle('show', i===idx)); }
+      function setPct(p){ bar.style.width = p + '%'; wrap.setAttribute('aria-valuenow', String(p)); if (p < 50) showFrame(0); else if (p < 100) showFrame(1); else showFrame(2); }
+      let start; let rafId; let timerDone=false; let appReady=false;
+      function step(ts){
+        if(!start) start=ts;
+        const el=ts-start;
+        const pct=Math.min(100, Math.round(el/TOTAL*100));
+        setPct(pct);
+        if(pct<100){
+          rafId=requestAnimationFrame(step);
+        } else {
+          timerDone = true;
+          maybeFinish();
+        }
+      }
+      rafId=requestAnimationFrame(step);
+
+      function fadeOutAndRemove(){
+        splash.style.transition='opacity .5s ease';
+        splash.style.opacity='0';
+        setTimeout(()=>{ splash.setAttribute('hidden',''); }, 550);
+      }
+      function maybeFinish(){
+        // If Angular is ready, respect a small MIN_SHOW then remove immediately.
+        if (appReady) {
+          const elapsed = Date.now() - bootStart;
+          const wait = Math.max(0, MIN_SHOW - elapsed);
+          setTimeout(()=>{ cancelAnimationFrame(rafId); fadeOutAndRemove(); }, wait);
+          return;
+        }
+        // If the animation timer ended but app isn't ready, keep showing until HARD_CAP.
+        // A hard safety cap below will force-hide in worst case.
+      }
+      function finishSplash(){
+        appReady = true;
+        maybeFinish();
+      }
+      window.finishSplash = finishSplash; // Angular marks readiness; we hide ASAP with small min show
+
+      // Safety: ensure splash never persists beyond HARD_CAP
+      setTimeout(() => {
+        if (!splash.hasAttribute('hidden')) {
+          cancelAnimationFrame(rafId);
+          fadeOutAndRemove();
+        }
+      }, HARD_CAP);
+
+      // Preload (optional)
+      frames.forEach(img=>{ const i=new Image(); i.src=img.src; });
+    })();
+  </script>
+</body>
+</html>
