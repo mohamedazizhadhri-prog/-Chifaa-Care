@@ -1,0 +1,11 @@
+[
+  {
+    "query": "Sarah Johnson",
+    "id": "53b1dcd1-9e97-48c8-90d0-3ad3a66059de",
+    "email": "sarah.johnson@example.com",
+    "firstName": "Sarah",
+    "lastName": "Johnson",
+    "role": "DOCTOR",
+    "doctorProfileId": null
+  }
+]

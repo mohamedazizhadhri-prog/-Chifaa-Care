@@ -1,0 +1,154 @@
+# Add these models to your existing schema.prisma file
+
+# ================================
+# PAYMENT SYSTEM MODELS
+# ================================
+
+model Payment {
+  id                     String        @id @default(uuid())
+  appointmentId          String        @unique
+  patientId              String
+  amount                 Float
+  currency               String        @default("USD")
+  status                 PaymentStatus @default(PENDING)
+  stripePaymentIntentId  String?       @unique
+  stripeClientSecret     String?
+  paymentMethod          String?
+  metadata               Json?
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+  
+  appointment            Appointment   @relation(fields: [appointmentId], references: [id])
+  patient                User          @relation("PatientPayments", fields: [patientId], references: [id])
+
+  @@index([appointmentId])
+  @@index([patientId])
+  @@index([status])
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+# ================================
+# PAYOUT SYSTEM MODELS
+# ================================
+
+model DoctorConnectedAccount {
+  id                  String   @id @default(uuid())
+  doctorId            String   @unique
+  stripeAccountId     String   @unique
+  accountStatus       String   @default("pending")
+  onboardingComplete  Boolean  @default(false)
+  payoutsEnabled      Boolean  @default(false)
+  detailsSubmitted    Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  
+  doctor              User     @relation("DoctorStripeAccount", fields: [doctorId], references: [id])
+
+  @@index([stripeAccountId])
+}
+
+model Payout {
+  id                String       @id @default(uuid())
+  doctorId          String
+  clinicId          String
+  amount            Float
+  currency          String       @default("USD")
+  status            PayoutStatus @default(PENDING)
+  stripeTransferId  String?      @unique
+  initiatedBy       String
+  notes             String?
+  createdAt         DateTime     @default(now())
+  completedAt       DateTime?
+  
+  doctor            User         @relation("DoctorPayouts", fields: [doctorId], references: [id])
+  clinic            Clinic       @relation("ClinicPayouts", fields: [clinicId], references: [id])
+  initiator         User         @relation("InitiatedPayouts", fields: [initiatedBy], references: [id])
+
+  @@index([doctorId])
+  @@index([clinicId])
+  @@index([status])
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+# ================================
+# COMMUNICATION SYSTEM MODELS
+# ================================
+
+model ChatMessage {
+  id          String   @id @default(uuid())
+  senderId    String
+  recipientId String
+  content     String
+  messageType String   @default("text")
+  isRead      Boolean  @default(false)
+  readAt      DateTime?
+  createdAt   DateTime @default(now())
+  
+  sender      User     @relation("SentChatMessages", fields: [senderId], references: [id])
+  recipient   User     @relation("ReceivedChatMessages", fields: [recipientId], references: [id])
+
+  @@index([senderId, recipientId])
+  @@index([createdAt])
+  @@index([isRead])
+}
+
+model VideoCallLog {
+  id          String    @id @default(uuid())
+  callerId    String
+  calleeId    String
+  channelName String
+  startedAt   DateTime  @default(now())
+  endedAt     DateTime?
+  duration    Int?
+  status      String    @default("initiated")
+  
+  caller      User      @relation("CallerCalls", fields: [callerId], references: [id])
+  callee      User      @relation("CalleeCalls", fields: [calleeId], references: [id])
+
+  @@index([callerId])
+  @@index([calleeId])
+  @@index([startedAt])
+}
+
+# ================================
+# UPDATE USER MODEL
+# Add these relations to your existing User model:
+# ================================
+
+# payments              Payment[]              @relation("PatientPayments")
+# connectedAccount      DoctorConnectedAccount? @relation("DoctorStripeAccount")
+# receivedPayouts       Payout[]               @relation("DoctorPayouts")
+# initiatedPayouts      Payout[]               @relation("InitiatedPayouts")
+# sentChatMessages      ChatMessage[]          @relation("SentChatMessages")
+# receivedChatMessages  ChatMessage[]          @relation("ReceivedChatMessages")
+# callerCalls           VideoCallLog[]         @relation("CallerCalls")
+# calleeCalls           VideoCallLog[]         @relation("CalleeCalls")
+
+# ================================
+# UPDATE APPOINTMENT MODEL
+# Add this relation to your existing Appointment model:
+# ================================
+
+# payment               Payment?
+
+# ================================
+# UPDATE CLINIC MODEL
+# Add this relation to your existing Clinic model:
+# ================================
+
+# payouts               Payout[]               @relation("ClinicPayouts")
