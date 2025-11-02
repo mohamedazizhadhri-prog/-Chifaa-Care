@@ -1,0 +1,706 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.deleteAppointment = exports.updateAppointmentStatus = exports.getDoctorSchedule = exports.getDoctorUpcoming = exports.getDoctorPending = exports.getAppointments = exports.createAppointment = exports.createAppointmentAsDoctor = exports.getAvailableSlots = exports.updateAppointment = void 0;
+const client_1 = require("@prisma/client");
+const express_validator_1 = require("express-validator");
+const appointment_1 = require("../types/appointment");
+// Helper function to handle errors consistently
+const handleError = (res, status, message, error) => {
+    console.error(message, error);
+    return res.status(status).json({
+        status: 'error',
+        message,
+        ...(process.env.NODE_ENV === 'development' && { error: (error === null || error === void 0 ? void 0 : error.message) || error })
+    });
+};
+// Update an appointment's core fields (reschedule, edit notes/reason)
+const updateAppointment = async (req, res) => {
+    var _a, _b, _c;
+    try {
+        const { id } = req.params;
+        const { appointmentDate, endTime, reason, notes } = req.body;
+        const appointment = await prisma.appointment.findUnique({ where: { id } });
+        if (!appointment) {
+            return res.status(404).json({ status: 'error', message: 'Appointment not found' });
+        }
+        // Permission: doctor, patient, or admin
+        if (appointment.doctorId !== ((_a = req.user) === null || _a === void 0 ? void 0 : _a.id) &&
+            appointment.patientId !== ((_b = req.user) === null || _b === void 0 ? void 0 : _b.id) &&
+            ((_c = req.user) === null || _c === void 0 ? void 0 : _c.role) !== 'ADMIN') {
+            return res.status(403).json({ status: 'error', message: 'Forbidden' });
+        }
+        // If rescheduling, ensure no conflict with other appointments for the doctor
+        let newStart = appointmentDate ? new Date(appointmentDate) : undefined;
+        let newEnd = endTime ? new Date(endTime) : undefined;
+        // Use existing values if not provided
+        newStart = newStart !== null && newStart !== void 0 ? newStart : new Date(appointment.appointmentDate);
+        newEnd = newEnd !== null && newEnd !== void 0 ? newEnd : new Date(appointment.endTime);
+        // Basic sanity
+        if (newEnd <= newStart) {
+            return res.status(400).json({ status: 'error', message: 'endTime must be after appointmentDate' });
+        }
+        // Conflict check against other active appointments for this doctor
+        const conflicting = await prisma.appointment.findFirst({
+            where: {
+                id: { not: id },
+                doctorId: appointment.doctorId,
+                status: { in: [appointment_1.APPOINTMENT_STATUS.PENDING, appointment_1.APPOINTMENT_STATUS.CONFIRMED] },
+                appointmentDate: { lte: newEnd },
+                endTime: { gte: newStart },
+            },
+        });
+        if (conflicting) {
+            return res.status(400).json({ status: 'error', message: 'Selected time slot conflicts with another appointment' });
+        }
+        const updated = await prisma.appointment.update({
+            where: { id },
+            data: {
+                appointmentDate: newStart,
+                endTime: newEnd,
+                ...(reason !== undefined ? { reason } : {}),
+                ...(notes !== undefined ? { notes } : {}),
+                // If user reschedules and current status is CONFIRMED, we can optionally set to PENDING for re-confirmation
+                // Leave as-is if admin/doctor prefers
+            },
+            include: {
+                patient: { select: { id: true, firstName: true, lastName: true, email: true } },
+                doctor: { select: { id: true, firstName: true, lastName: true, email: true } },
+            },
+        });
+        return res.status(200).json({ status: 'success', data: { appointment: updated } });
+    }
+    catch (error) {
+        console.error('Update appointment error:', error);
+        return res.status(500).json({ status: 'error', message: 'An error occurred while updating the appointment' });
+    }
+};
+exports.updateAppointment = updateAppointment;
+// Compute available time slots for a doctor on a given date
+const getAvailableSlots = async (req, res) => {
+    try {
+        const doctorId = req.params.id || req.query.doctorId;
+        const { date, duration = '30', tz } = req.query;
+        if (!doctorId)
+            return res.status(400).json({ status: 'error', message: 'doctorId is required' });
+        if (!date)
+            return res.status(400).json({ status: 'error', message: 'date is required (ISO string)' });
+        const targetDate = new Date(date);
+        if (isNaN(targetDate.getTime())) {
+            return res.status(400).json({ status: 'error', message: 'Invalid date' });
+        }
+        const slotMinutes = Math.max(5, parseInt(String(duration), 10) || 30);
+        // Fetch doctor profile for availability (stored as JSON strings)
+        const doctorProfile = await prisma.doctorProfile.findFirst({ where: { userId: doctorId } });
+        // Determine working windows for the day. Default 09:00-17:00 if none configured.
+        // If availableHours is JSON array of ranges like ["09:00-12:00","13:00-17:00"], use those.
+        let ranges = [
+            { start: '09:00', end: '17:00' },
+        ];
+        try {
+            if (doctorProfile === null || doctorProfile === void 0 ? void 0 : doctorProfile.availableHours) {
+                const parsed = JSON.parse(doctorProfile.availableHours);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    ranges = parsed.map((r) => {
+                        if (typeof r === 'string' && r.includes('-')) {
+                            const [s, e] = r.split('-');
+                            return { start: s.trim(), end: e.trim() };
+                        }
+                        if (r && typeof r === 'object' && r.start && r.end)
+                            return { start: r.start, end: r.end };
+                        return null;
+                    }).filter(Boolean);
+                }
+            }
+        }
+        catch (_) {
+            // ignore parse errors, fall back to default
+        }
+        // Build candidate slots in UTC based on provided date and optional tz.
+        // We treat date as the local day in tz (if provided), else in server local/UTC.
+        const dayStart = new Date(targetDate);
+        dayStart.setUTCHours(0, 0, 0, 0);
+        const slots = [];
+        const toDateOnDay = (timeHHMM) => {
+            const [hh, mm] = timeHHMM.split(':').map((v) => parseInt(v, 10));
+            const d = new Date(dayStart);
+            d.setUTCHours(hh, mm || 0, 0, 0);
+            return d;
+        };
+        for (const r of ranges) {
+            let cursor = toDateOnDay(r.start);
+            const windowEnd = toDateOnDay(r.end);
+            while (cursor < windowEnd) {
+                const end = new Date(cursor.getTime() + slotMinutes * 60 * 1000);
+                if (end > windowEnd)
+                    break;
+                slots.push({ start: new Date(cursor), end });
+                cursor = end;
+            }
+        }
+        // Fetch existing appointments to filter conflicts
+        const existing = await prisma.appointment.findMany({
+            where: {
+                doctorId,
+                status: { in: [appointment_1.APPOINTMENT_STATUS.PENDING, appointment_1.APPOINTMENT_STATUS.CONFIRMED] },
+                appointmentDate: { gte: new Date(dayStart), lt: new Date(dayStart.getTime() + 24 * 60 * 60 * 1000) },
+            },
+            select: { appointmentDate: true, endTime: true },
+        });
+        const available = slots.filter((s) => {
+            return !existing.some((e) => !(s.end <= e.appointmentDate || s.start >= e.endTime));
+        }).map((s) => ({ start: s.start.toISOString(), end: s.end.toISOString() }));
+        // Return raw array for frontend convenience
+        return res.status(200).json(available);
+    }
+    catch (error) {
+        console.error('Get available slots error:', error);
+        return res.status(500).json({ status: 'error', message: 'Failed to compute available slots' });
+    }
+};
+exports.getAvailableSlots = getAvailableSlots;
+// Doctor creates an appointment for a patient
+const createAppointmentAsDoctor = async (req, res) => {
+    var _a, _b;
+    try {
+        if (((_a = req.user) === null || _a === void 0 ? void 0 : _a.role) !== 'DOCTOR' && ((_b = req.user) === null || _b === void 0 ? void 0 : _b.role) !== 'ADMIN') {
+            return res.status(403).json({ status: 'error', message: 'Only doctors or admins can create appointments here' });
+        }
+        const errors = (0, express_validator_1.validationResult)(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ status: 'error', message: 'Validation failed', errors: errors.array() });
+        }
+        const { patientId, appointmentDate, endTime, reason, notes } = req.body;
+        const doctorId = req.user.role === 'DOCTOR' ? req.user.id : (req.body.doctorId || undefined);
+        if (!doctorId) {
+            return res.status(400).json({ status: 'error', message: 'doctorId is required' });
+        }
+        // Validate entities
+        const [doctor, patient] = await Promise.all([
+            prisma.user.findFirst({ where: { id: doctorId, role: 'DOCTOR' } }),
+            prisma.user.findFirst({ where: { id: patientId, role: 'PATIENT' } }),
+        ]);
+        if (!doctor)
+            return res.status(404).json({ status: 'error', message: 'Doctor not found' });
+        if (!patient)
+            return res.status(404).json({ status: 'error', message: 'Patient not found' });
+        // Conflict check
+        const conflictingAppointment = await prisma.appointment.findFirst({
+            where: {
+                doctorId,
+                appointmentDate: { lte: endTime },
+                endTime: { gte: appointmentDate },
+                status: { in: [appointment_1.APPOINTMENT_STATUS.PENDING, appointment_1.APPOINTMENT_STATUS.CONFIRMED] },
+            },
+        });
+        if (conflictingAppointment) {
+            return res.status(400).json({ status: 'error', message: 'The selected time slot is not available' });
+        }
+        const appointment = await prisma.appointment.create({
+            data: {
+                patientId,
+                doctorId,
+                appointmentDate: new Date(appointmentDate),
+                endTime: new Date(endTime),
+                reason,
+                notes,
+                status: appointment_1.APPOINTMENT_STATUS.CONFIRMED, // doctor-created defaults to confirmed
+            },
+            include: {
+                patient: { select: { id: true, firstName: true, lastName: true, email: true } },
+                doctor: { select: { id: true, firstName: true, lastName: true, email: true } },
+            },
+        });
+        return res.status(201).json({ status: 'success', data: { appointment } });
+    }
+    catch (error) {
+        console.error('[createAppointmentAsDoctor] error:', error);
+        return res.status(500).json({ status: 'error', message: 'An error occurred while creating the appointment' });
+    }
+};
+exports.createAppointmentAsDoctor = createAppointmentAsDoctor;
+const prisma = new client_1.PrismaClient();
+const createAppointment = async (req, res) => {
+    try {
+        console.log('[createAppointment] incoming body:', req.body);
+        console.log('[createAppointment] user from token:', req.user);
+        const errors = (0, express_validator_1.validationResult)(req);
+        if (!errors.isEmpty()) {
+            console.warn('[createAppointment] validation errors:', errors.array());
+            return res.status(400).json({ status: 'error', message: 'Validation failed', errors: errors.array() });
+        }
+        const { doctorId, appointmentDate, endTime, reason, notes } = req.body;
+        if (!req.user || !req.user.id) {
+            console.error('[createAppointment] Missing authenticated user');
+            return res.status(401).json({ status: 'error', message: 'Unauthorized: missing or invalid token' });
+        }
+        const patientId = req.user.id;
+        // Check if doctor exists
+        const doctor = await prisma.user.findFirst({
+            where: { id: doctorId, role: 'DOCTOR' },
+        }).catch((error) => {
+            console.error('[createAppointment] error fetching doctor:', error);
+            throw error;
+        });
+        // Check if patient exists
+        const patient = await prisma.user.findFirst({
+            where: { id: patientId, role: 'PATIENT' },
+        }).catch((error) => {
+            console.error('[createAppointment] error fetching patient:', error);
+            throw error;
+        });
+        if (!doctor) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Doctor not found',
+            });
+        }
+        // Check for time conflicts
+        const conflictingAppointment = await prisma.appointment.findFirst({
+            where: {
+                doctorId,
+                appointmentDate: {
+                    lte: endTime,
+                },
+                endTime: {
+                    gte: appointmentDate,
+                },
+                status: {
+                    in: [appointment_1.APPOINTMENT_STATUS.PENDING, appointment_1.APPOINTMENT_STATUS.CONFIRMED],
+                },
+            },
+        }).catch((e) => {
+            console.error('[createAppointment] error checking conflicts:', e);
+            throw e;
+        });
+        if (conflictingAppointment) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'The selected time slot is not available',
+            });
+        }
+        const appointment = await prisma.appointment.create({
+            data: {
+                patientId,
+                doctorId,
+                appointmentDate: new Date(appointmentDate),
+                endTime: new Date(endTime),
+                reason,
+                notes,
+                status: 'PENDING',
+            },
+            include: {
+                patient: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                    },
+                },
+                doctor: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                    },
+                },
+            },
+        });
+        res.status(201).json({
+            status: 'success',
+            data: {
+                appointment,
+            },
+        });
+    }
+    catch (error) {
+        console.error('[createAppointment] error:', error);
+        // Surface detailed error info for debugging
+        const message = (error === null || error === void 0 ? void 0 : error.message) || 'An error occurred while creating the appointment';
+        const code = error === null || error === void 0 ? void 0 : error.code;
+        const meta = error === null || error === void 0 ? void 0 : error.meta;
+        res.status(500).json({ status: 'error', message, code, meta });
+    }
+};
+exports.createAppointment = createAppointment;
+const getAppointments = async (req, res) => {
+    try {
+        const { status, startDate, endDate, patientId, doctorId } = req.query;
+        const userId = req.user.id;
+        const userRole = req.user.role;
+        // Build the where clause based on user role and query parameters
+        const whereClause = {};
+        // Filter by status if provided
+        if (status && (0, appointment_1.isValidAppointmentStatus)(status)) {
+            whereClause.status = status;
+        }
+        // Date range filter
+        if (startDate && endDate) {
+            whereClause.OR = [
+                {
+                    // Appointments that start within the range
+                    appointmentDate: {
+                        gte: new Date(startDate),
+                        lte: new Date(endDate),
+                    },
+                },
+                {
+                    // Appointments that end within the range
+                    endTime: {
+                        gte: new Date(startDate),
+                        lte: new Date(endDate),
+                    },
+                },
+                {
+                    // Appointments that span the entire range
+                    AND: [
+                        { appointmentDate: { lte: new Date(startDate) } },
+                        { endTime: { gte: new Date(endDate) } },
+                    ],
+                },
+            ];
+        }
+        // Handle filtering by patient or doctor for admins
+        if (userRole === 'ADMIN') {
+            if (patientId)
+                whereClause.patientId = patientId;
+            if (doctorId)
+                whereClause.doctorId = doctorId;
+        }
+        // For doctors, they can only see their own appointments or filter by patient
+        else if (userRole === 'DOCTOR') {
+            whereClause.doctorId = userId;
+            if (patientId)
+                whereClause.patientId = patientId;
+        }
+        // For patients, they can only see their own appointments
+        else if (userRole === 'PATIENT') {
+            whereClause.patientId = userId;
+            if (doctorId)
+                whereClause.doctorId = doctorId;
+        }
+        // No role or invalid role
+        else {
+            return res.status(403).json({
+                status: 'error',
+                message: 'Unauthorized: Only doctors, patients, and admins can view appointments',
+            });
+        }
+        const appointments = await prisma.appointment.findMany({
+            where: whereClause,
+            include: {
+                doctor: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                    },
+                },
+                patient: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                        phone: true,
+                        dateOfBirth: true,
+                        gender: true,
+                    },
+                },
+            },
+            orderBy: {
+                appointmentDate: 'asc',
+            },
+        });
+        res.status(200).json({
+            status: 'success',
+            results: appointments.length,
+            data: { appointments },
+        });
+    }
+    catch (error) {
+        console.error('Error fetching appointments:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'An error occurred while fetching appointments',
+        });
+    }
+};
+exports.getAppointments = getAppointments;
+// Get all pending appointment requests for the authenticated doctor
+const getDoctorPending = async (req, res) => {
+    var _a, _b;
+    try {
+        if (((_a = req.user) === null || _a === void 0 ? void 0 : _a.role) !== 'DOCTOR' && ((_b = req.user) === null || _b === void 0 ? void 0 : _b.role) !== 'ADMIN') {
+            return res.status(403).json({ status: 'error', message: 'Only doctors or admins can view this resource' });
+        }
+        const doctorId = req.user.role === 'DOCTOR' ? req.user.id : (req.query.doctorId || undefined);
+        if (!doctorId) {
+            return res.status(400).json({ status: 'error', message: 'doctorId is required for admins' });
+        }
+        const appointments = await prisma.appointment.findMany({
+            where: {
+                doctorId,
+                status: appointment_1.APPOINTMENT_STATUS.PENDING,
+            },
+            include: {
+                patient: {
+                    select: { id: true, firstName: true, lastName: true, email: true, phone: true }
+                }
+            },
+            orderBy: { appointmentDate: 'asc' },
+        });
+        return res.status(200).json({ status: 'success', results: appointments.length, data: { appointments } });
+    }
+    catch (error) {
+        console.error('Error fetching doctor pending appointments:', error);
+        return res.status(500).json({ status: 'error', message: 'Failed to fetch pending appointments' });
+    }
+};
+exports.getDoctorPending = getDoctorPending;
+// Get upcoming confirmed appointments for the authenticated doctor (future only)
+const getDoctorUpcoming = async (req, res) => {
+    var _a, _b;
+    try {
+        if (((_a = req.user) === null || _a === void 0 ? void 0 : _a.role) !== 'DOCTOR' && ((_b = req.user) === null || _b === void 0 ? void 0 : _b.role) !== 'ADMIN') {
+            return res.status(403).json({ status: 'error', message: 'Only doctors or admins can view this resource' });
+        }
+        const doctorId = req.user.role === 'DOCTOR' ? req.user.id : (req.query.doctorId || undefined);
+        if (!doctorId) {
+            return res.status(400).json({ status: 'error', message: 'doctorId is required for admins' });
+        }
+        const now = new Date();
+        const appointments = await prisma.appointment.findMany({
+            where: {
+                doctorId,
+                status: appointment_1.APPOINTMENT_STATUS.CONFIRMED,
+                appointmentDate: { gte: now },
+            },
+            include: {
+                patient: {
+                    select: { id: true, firstName: true, lastName: true, email: true, phone: true }
+                }
+            },
+            orderBy: { appointmentDate: 'asc' },
+        });
+        return res.status(200).json({ status: 'success', results: appointments.length, data: { appointments } });
+    }
+    catch (error) {
+        console.error('Error fetching doctor upcoming appointments:', error);
+        return res.status(500).json({ status: 'error', message: 'Failed to fetch upcoming appointments' });
+    }
+};
+exports.getDoctorUpcoming = getDoctorUpcoming;
+/**
+ * Get a doctor's schedule with patient details for each appointment
+ */
+const getDoctorSchedule = async (req, res) => {
+    try {
+        const { startDate, endDate, status } = req.query;
+        const doctorId = req.user.role === 'ADMIN' ? req.query.doctorId : req.user.id;
+        // Validate that the authenticated user is either the doctor or an admin
+        if (req.user.role !== 'ADMIN' && req.user.id !== doctorId) {
+            return res.status(403).json({
+                status: 'error',
+                message: 'Unauthorized: You can only view your own schedule',
+            });
+        }
+        // Build the where clause
+        const whereClause = {
+            doctorId,
+        };
+        // Filter by status if provided
+        if (status && (0, appointment_1.isValidAppointmentStatus)(status)) {
+            whereClause.status = status;
+        }
+        else {
+            // Default to showing upcoming appointments
+            whereClause.OR = [
+                { status: 'PENDING' },
+                { status: 'CONFIRMED' },
+            ];
+        }
+        // Date range filter (default to next 30 days if not specified)
+        const start = startDate ? new Date(startDate) : new Date();
+        const end = endDate
+            ? new Date(endDate)
+            : new Date(new Date().setDate(new Date().getDate() + 30));
+        whereClause.OR = [
+            {
+                // Appointments that start within the range
+                appointmentDate: {
+                    gte: start,
+                    lte: end,
+                },
+            },
+            {
+                // Appointments that end within the range
+                endTime: {
+                    gte: start,
+                    lte: end,
+                },
+            },
+            {
+                // Appointments that span the entire range
+                AND: [
+                    { appointmentDate: { lte: start } },
+                    { endTime: { gte: end } },
+                ],
+            },
+        ];
+        // Get the doctor's appointments with patient details
+        const appointments = await prisma.appointment.findMany({
+            where: whereClause,
+            include: {
+                patient: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                        phone: true,
+                        dateOfBirth: true,
+                        gender: true,
+                        profileImage: true,
+                    },
+                },
+            },
+            orderBy: {
+                appointmentDate: 'asc',
+            },
+        });
+        // Format the response
+        const schedule = {
+            doctorId,
+            startDate: start,
+            endDate: end,
+            appointments: appointments.map((apt) => ({
+                id: apt.id,
+                title: `${apt.patient.firstName} ${apt.patient.lastName}`,
+                start: apt.appointmentDate,
+                end: apt.endTime,
+                status: apt.status,
+                reason: apt.reason,
+                notes: apt.notes,
+                patient: apt.patient,
+            })),
+        };
+        res.status(200).json({
+            status: 'success',
+            data: { schedule },
+        });
+    }
+    catch (error) {
+        console.error('Error fetching doctor schedule:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'An error occurred while fetching the doctor\'s schedule',
+        });
+    }
+};
+exports.getDoctorSchedule = getDoctorSchedule;
+const updateAppointmentStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+        // Validate status
+        if (!(0, appointment_1.isValidAppointmentStatus)(status)) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Invalid status value. Must be one of: ' + Object.values(appointment_1.APPOINTMENT_STATUS).join(', '),
+            });
+        }
+        const appointment = await prisma.appointment.findUnique({
+            where: { id },
+        });
+        if (!appointment) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Appointment not found',
+            });
+        }
+        // Check if user has permission to update this appointment
+        if (appointment.doctorId !== req.user.id &&
+            appointment.patientId !== req.user.id &&
+            req.user.role !== 'ADMIN') {
+            return res.status(403).json({
+                status: 'error',
+                message: 'You do not have permission to update this appointment',
+            });
+        }
+        const updatedAppointment = await prisma.appointment.update({
+            where: { id },
+            data: { status },
+            include: {
+                patient: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                    },
+                },
+                doctor: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                    },
+                },
+            },
+        });
+        res.status(200).json({
+            status: 'success',
+            data: {
+                appointment: updatedAppointment,
+            },
+        });
+    }
+    catch (error) {
+        console.error('Update appointment status error:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'An error occurred while updating the appointment status',
+        });
+    }
+};
+exports.updateAppointmentStatus = updateAppointmentStatus;
+const deleteAppointment = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const appointment = await prisma.appointment.findUnique({
+            where: { id },
+        });
+        if (!appointment) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Appointment not found',
+            });
+        }
+        // Only allow admin or the patient who created the appointment to delete it
+        if (appointment.patientId !== req.user.id && req.user.role !== 'ADMIN') {
+            return res.status(403).json({
+                status: 'error',
+                message: 'You do not have permission to delete this appointment',
+            });
+        }
+        await prisma.appointment.delete({
+            where: { id },
+        });
+        res.status(204).json({
+            status: 'success',
+            data: null,
+        });
+    }
+    catch (error) {
+        console.error('Delete appointment error:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'An error occurred while deleting the appointment',
+        });
+    }
+};
+exports.deleteAppointment = deleteAppointment;

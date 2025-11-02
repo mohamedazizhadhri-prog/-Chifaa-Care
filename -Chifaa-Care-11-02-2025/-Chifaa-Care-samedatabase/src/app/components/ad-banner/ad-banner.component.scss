@@ -1,0 +1,154 @@
+.ad-banner-container {
+  pointer-events: none; // Allow clicking through the container
+  z-index: 999; // Below navbar (1000) but above content
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100vh;
+}
+
+.ad-banner {
+  position: fixed;
+  pointer-events: auto; // Enable clicks on banners
+  z-index: 999;
+  
+  &.ad-banner-left {
+    top: calc(var(--nav-h) + 50px); // Position below navbar with some spacing
+    left: 5px;
+    width: clamp(300px, 15vw, 350px);
+    
+    .ad-banner-content {
+      animation: slideDownFade 1s ease-out forwards;
+    }
+  }
+  
+  &.ad-banner-right {
+    top: calc(var(--nav-h) + 50px); // Position below navbar with some spacing
+    right: 5px;
+    width: clamp(180px, 15vw, 250px);
+  }
+}
+
+.ad-banner-content {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  border: 2px solid #e5e7eb;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+  }
+}
+
+.ad-image {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+// Pharmacy slideshow container
+.pharmacy-slideshow {
+  position: relative;
+  width: 100%;
+  height: auto;
+  
+  .slide-image {
+    width: 100%;
+    height: auto;
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    opacity: 0;
+    animation: imageSlideshow 8s infinite;
+    
+    // First image
+    &:nth-child(1) {
+      animation-delay: 0s;
+    }
+    
+    // Second image
+    &:nth-child(2) {
+      animation-delay: 2s;
+    }
+    
+    // Third image
+    &:nth-child(3) {
+      animation-delay: 4s;
+    }
+    
+    // Fourth image
+    &:nth-child(4) {
+      animation-delay: 6s;
+    }
+  }
+  
+  // First image needs to be visible initially for height calculation
+  .slide-image:first-child {
+    position: relative;
+  }
+}
+
+// Animation for slideshow (fade in/out effect)
+@keyframes imageSlideshow {
+  0% {
+    opacity: 0;
+  }
+  5% {
+    opacity: 1;
+  }
+  25% {
+    opacity: 1;
+  }
+  30% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+// Animation for left banner entrance (top to bottom)
+@keyframes slideDownFade {
+  0% {
+    opacity: 0;
+    transform: translateY(-50px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 1200px) {
+  .ad-banner {
+    &.ad-banner-left,
+    &.ad-banner-right {
+      width: clamp(150px, 12vw, 200px);
+    }
+  }
+}
+
+@media (max-width: 968px) {
+  .ad-banner {
+    &.ad-banner-left {
+      left: 10px;
+    }
+    
+    &.ad-banner-right {
+      right: 10px;
+    }
+  }
+}
+
+// Hide banners on small screens to avoid cluttering
+@media (max-width: 768px) {
+  .ad-banner-container {
+    display: none;
+  }
+}

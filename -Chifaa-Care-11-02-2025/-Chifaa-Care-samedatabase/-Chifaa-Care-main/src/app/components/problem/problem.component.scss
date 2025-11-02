@@ -1,0 +1,159 @@
+.problem-section {
+  padding: 6rem 0;
+  background: white;
+  position: relative;
+}
+
+.problem-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+
+  @media (max-width: 768px) {
+    padding: 0 1rem;
+  }
+}
+
+.problem-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+  align-items: center;
+
+  @media (max-width: 1024px) {
+    grid-template-columns: 1fr;
+    gap: 3rem;
+    text-align: center;
+  }
+
+  @media (max-width: 768px) {
+    gap: 2rem;
+  }
+}
+
+.problem-image {
+  opacity: 0;
+  transform: translateX(-50px);
+  transition: all 0.8s ease;
+
+  &.animate-in {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  .image-placeholder {
+    width: 100%;
+    height: 400px;
+    background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    color: #2563eb;
+    border: 2px dashed #bfdbfe;
+    position: relative;
+    overflow: hidden;
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="dots" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="10" cy="10" r="2" fill="%23bfdbfe" opacity="0.3"/></pattern></defs><rect width="100" height="100" fill="url(%23dots)"/></svg>');
+      opacity: 0.5;
+    }
+
+    i {
+      font-size: 4rem;
+      z-index: 1;
+      position: relative;
+    }
+
+    span {
+      font-size: 1.1rem;
+      font-weight: 500;
+      z-index: 1;
+      position: relative;
+      text-align: center;
+      max-width: 200px;
+    }
+  }
+}
+
+.problem-text {
+  opacity: 0;
+  transform: translateX(50px);
+  transition: all 0.8s ease 0.2s;
+
+  &.animate-in {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.problem-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 1.5rem;
+  line-height: 1.2;
+
+  @media (max-width: 768px) {
+    font-size: 2rem;
+  }
+}
+
+.problem-description {
+  font-size: 1.1rem;
+  line-height: 1.7;
+  color: #6b7280;
+  margin-bottom: 2.5rem;
+  max-width: 500px;
+
+  @media (max-width: 1024px) {
+    max-width: none;
+  }
+}
+
+.problem-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .stat-item {
+    text-align: center;
+    padding: 1.5rem;
+    background: #f8fafc;
+    border-radius: 15px;
+    border: 1px solid #e2e8f0;
+    transition: all 0.3s ease;
+
+    &:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      border-color: #2563eb;
+    }
+
+    .stat-number {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #2563eb;
+      margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+      font-size: 0.9rem;
+      color: #6b7280;
+      line-height: 1.4;
+    }
+  }
+} 

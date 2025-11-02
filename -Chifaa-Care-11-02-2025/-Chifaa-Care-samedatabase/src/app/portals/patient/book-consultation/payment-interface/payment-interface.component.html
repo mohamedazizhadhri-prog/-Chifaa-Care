@@ -1,0 +1,291 @@
+<div class="payment-interface-container">
+  <!-- Security Badge -->
+  <div class="security-badge">
+    <i class="fas fa-lock"></i>
+    <span>Secured by 256-bit SSL encryption</span>
+  </div>
+
+  <!-- Payment Method Selection -->
+  <div class="payment-methods-section">
+    <h5 class="section-title">Select Payment Method</h5>
+    <div class="payment-methods-grid">
+      <button 
+        *ngFor="let method of paymentMethods"
+        type="button"
+        class="payment-method-btn"
+        [class.active]="selectedPaymentMethod === method.type"
+        (click)="selectPaymentMethod(method.type)">
+        <i [class]="method.icon"></i>
+        <span>{{ method.name }}</span>
+        <div class="checkmark" *ngIf="selectedPaymentMethod === method.type">
+          <i class="fas fa-check-circle"></i>
+        </div>
+      </button>
+    </div>
+  </div>
+
+  <!-- Card Payment Form -->
+  <div *ngIf="selectedPaymentMethod === 'card'" class="payment-form-section">
+    <h5 class="section-title">Card Information</h5>
+    
+    <!-- Mock Payment Mode -->
+    <div *ngIf="useMockPayment" class="mock-payment-form">
+      <!-- Card Number -->
+      <div class="form-group">
+        <label class="form-label">Card Number</label>
+        <div class="input-with-icon">
+          <input
+            type="text"
+            class="form-control card-input"
+            placeholder="1234 5678 9012 3456"
+            [value]="mockCardData.number"
+            (input)="onMockCardInput('number', $any($event.target).value)"
+            maxlength="19"
+          />
+          <div class="card-brands">
+            <i class="fab fa-cc-visa" [class.active]="getCardBrand() === 'visa'"></i>
+            <i class="fab fa-cc-mastercard" [class.active]="getCardBrand() === 'mastercard'"></i>
+            <i class="fab fa-cc-amex" [class.active]="getCardBrand() === 'amex'"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cardholder Name -->
+      <div class="form-group">
+        <label class="form-label">Cardholder Name</label>
+        <input
+          type="text"
+          class="form-control"
+          placeholder="JOHN DOE"
+          [value]="mockCardData.name"
+          (input)="onMockCardInput('name', $any($event.target).value)"
+          style="text-transform: uppercase;"
+        />
+      </div>
+
+      <!-- Expiry and CVV -->
+      <div class="row">
+        <div class="col-md-6">
+          <div class="form-group">
+            <label class="form-label">Expiry Date</label>
+            <input
+              type="text"
+              class="form-control"
+              placeholder="MM/YY"
+              [value]="mockCardData.expiry"
+              (input)="onMockCardInput('expiry', $any($event.target).value)"
+              maxlength="5"
+            />
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="form-group">
+            <label class="form-label">CVV</label>
+            <div class="input-with-tooltip">
+              <input
+                type="password"
+                class="form-control"
+                placeholder="123"
+                [value]="mockCardData.cvv"
+                (input)="onMockCardInput('cvv', $any($event.target).value)"
+                maxlength="4"
+              />
+              <div class="tooltip-icon" title="3-4 digit security code on back of card">
+                <i class="fas fa-info-circle"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Development Mode Notice -->
+      <div class="alert alert-info dev-mode-alert">
+        <i class="fas fa-code"></i>
+        <div>
+          <strong>Development Mode</strong>
+          <p class="mb-0">Using test payment mode. No real charges will be made.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Real Stripe Payment Form -->
+    <div *ngIf="!useMockPayment" class="stripe-payment-form">
+      <!-- Cardholder Name -->
+      <div class="form-group">
+        <label class="form-label">Cardholder Name</label>
+        <input
+          type="text"
+          class="form-control"
+          placeholder="Name on card"
+          [value]="mockCardData.name"
+          (input)="onMockCardInput('name', $any($event.target).value)"
+        />
+      </div>
+
+      <!-- Card Number -->
+      <div class="form-group">
+        <label class="form-label">Card Number</label>
+        <div id="card-number-element" class="stripe-element"></div>
+      </div>
+
+      <!-- Expiry and CVV -->
+      <div class="row">
+        <div class="col-md-6">
+          <div class="form-group">
+            <label class="form-label">Expiry Date</label>
+            <div id="card-expiry-element" class="stripe-element"></div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="form-group">
+            <label class="form-label">CVC</label>
+            <div id="card-cvc-element" class="stripe-element"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stripe Badge -->
+      <div class="powered-by-stripe">
+        <span>Powered by</span>
+        <img src="https://stripe.com/img/v3/home/social.png" alt="Stripe" />
+      </div>
+    </div>
+  </div>
+
+  <!-- Bank Transfer -->
+  <div *ngIf="selectedPaymentMethod === 'bank'" class="payment-form-section">
+    <div class="info-box">
+      <i class="fas fa-info-circle"></i>
+      <div>
+        <strong>Bank Transfer Information</strong>
+        <p class="mb-0">You will be redirected to your bank's secure portal to complete the payment.</p>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Select Your Bank</label>
+      <select class="form-control">
+        <option value="">Choose a bank...</option>
+        <option value="chase">Chase Bank</option>
+        <option value="bofa">Bank of America</option>
+        <option value="wells">Wells Fargo</option>
+        <option value="citi">Citibank</option>
+        <option value="usbank">U.S. Bank</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- UPI Payment -->
+  <div *ngIf="selectedPaymentMethod === 'upi'" class="payment-form-section">
+    <div class="form-group">
+      <label class="form-label">UPI ID</label>
+      <input
+        type="text"
+        class="form-control"
+        placeholder="username@upi"
+      />
+    </div>
+
+    <div class="qr-code-section">
+      <div class="qr-code-placeholder">
+        <i class="fas fa-qrcode"></i>
+        <p>Scan QR Code</p>
+      </div>
+      <p class="text-center text-muted">Scan with any UPI app to pay</p>
+    </div>
+  </div>
+
+  <!-- PayPal -->
+  <div *ngIf="selectedPaymentMethod === 'paypal'" class="payment-form-section">
+    <div class="info-box">
+      <i class="fab fa-paypal"></i>
+      <div>
+        <strong>PayPal Payment</strong>
+        <p class="mb-0">You will be redirected to PayPal to complete your payment securely.</p>
+      </div>
+    </div>
+
+    <div class="paypal-button-placeholder">
+      <button type="button" class="btn-paypal">
+        <i class="fab fa-paypal"></i>
+        Continue with PayPal
+      </button>
+    </div>
+  </div>
+
+  <!-- Order Summary -->
+  <div class="order-summary-section">
+    <h5 class="section-title">Order Summary</h5>
+    <div class="summary-details">
+      <div class="summary-row">
+        <span class="label">Doctor:</span>
+        <span class="value">{{ appointmentDetails.doctorName }}</span>
+      </div>
+      <div class="summary-row">
+        <span class="label">Date:</span>
+        <span class="value">{{ appointmentDetails.date }}</span>
+      </div>
+      <div class="summary-row">
+        <span class="label">Time:</span>
+        <span class="value">{{ appointmentDetails.time }}</span>
+      </div>
+      <div class="summary-row">
+        <span class="label">Consultation Type:</span>
+        <span class="value">{{ appointmentDetails.consultationType }}</span>
+      </div>
+      <div class="summary-row total-row">
+        <span class="label">Total Amount:</span>
+        <span class="value amount">{{ formatAmount(amount) }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error Message -->
+  <div *ngIf="errorMessage" class="alert alert-danger error-alert">
+    <i class="fas fa-exclamation-triangle"></i>
+    {{ errorMessage }}
+  </div>
+
+  <!-- Action Buttons -->
+  <div class="action-buttons">
+    <button 
+      type="button" 
+      class="btn btn-outline-secondary"
+      [disabled]="isProcessing"
+      (click)="onGoBack()">
+      <i class="fas fa-arrow-left"></i>
+      Back
+    </button>
+
+    <button 
+      type="button" 
+      class="btn btn-primary btn-pay"
+      [disabled]="isProcessing"
+      (click)="handlePayment()">
+      <span *ngIf="!isProcessing">
+        <i class="fas fa-lock"></i>
+        Pay {{ formatAmount(amount) }}
+      </span>
+      <span *ngIf="isProcessing">
+        <i class="fas fa-spinner fa-spin"></i>
+        Processing...
+      </span>
+    </button>
+  </div>
+
+  <!-- Trust Badges -->
+  <div class="trust-badges">
+    <div class="badge-item">
+      <i class="fas fa-shield-alt"></i>
+      <span>Secure Payment</span>
+    </div>
+    <div class="badge-item">
+      <i class="fas fa-user-shield"></i>
+      <span>Privacy Protected</span>
+    </div>
+    <div class="badge-item">
+      <i class="fas fa-check-circle"></i>
+      <span>PCI Compliant</span>
+    </div>
+  </div>
+</div>
