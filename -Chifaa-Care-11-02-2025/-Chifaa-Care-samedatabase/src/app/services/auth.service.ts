@@ -116,9 +116,30 @@ export class AuthService {
         }
 
         // Create base user object
+        // Try multiple ways to get the user's name
+        console.log('User data received from API:', userData);
+        let userName = '';
+        if (userData.firstName || userData.lastName) {
+          userName = `${userData.firstName || ''} ${userData.lastName || ''}`.trim();
+          console.log('Using firstName + lastName:', userName);
+        } else if (userData.name) {
+          userName = userData.name;
+          console.log('Using name field:', userName);
+        } else if (userData.fullName) {
+          userName = userData.fullName;
+          console.log('Using fullName field:', userName);
+        } else if (userData.username) {
+          userName = userData.username;
+          console.log('Using username field:', userName);
+        } else {
+          // Last resort: use email username
+          userName = userData.email.split('@')[0];
+          console.log('Using email username:', userName);
+        }
+        
         const baseUser = {
           id: userData.id,
-          name: `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || 'User',
+          name: userName,
           email: userData.email,
           role: (userData.role || 'patient').toLowerCase() as 'patient' | 'doctor' | 'clinic' | 'admin'
         };
@@ -247,9 +268,30 @@ export class AuthService {
         }
 
         // Create base user object
+        // Try multiple ways to get the user's name
+        console.log('User data received from signup API:', userData);
+        let userName = '';
+        if (userData.firstName || userData.lastName) {
+          userName = `${userData.firstName || ''} ${userData.lastName || ''}`.trim();
+          console.log('Using firstName + lastName:', userName);
+        } else if (userData.name) {
+          userName = userData.name;
+          console.log('Using name field:', userName);
+        } else if (userData.fullName) {
+          userName = userData.fullName;
+          console.log('Using fullName field:', userName);
+        } else if (userData.username) {
+          userName = userData.username;
+          console.log('Using username field:', userName);
+        } else {
+          // Last resort: use email username
+          userName = userData.email.split('@')[0];
+          console.log('Using email username:', userName);
+        }
+        
         const baseUser = {
           id: userData.id,
-          name: `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || 'User',
+          name: userName,
           email: userData.email,
           role: (userData.role || 'patient').toLowerCase() as 'patient' | 'doctor' | 'clinic'
         };
@@ -342,6 +384,28 @@ export class AuthService {
 
   getToken(): string | null {
     return localStorage.getItem(this.TOKEN_KEY);
+  }
+
+  // Handle HTTP errors
+  private handleError(error: HttpErrorResponse) {
+    let errorMessage = 'An unknown error occurred';
+    if (error.error instanceof ErrorEvent) {
+      // Client-side error
+      errorMessage = `Error: ${error.error.message}`;
+    } else {
+      // Server-side error
+      errorMessage = `Error Code: ${error.status}\nMessage: ${error.message}`;
+    }
+    console.error(errorMessage);
+    return throwError(() => new Error(errorMessage));
+  }
+
+  // Get all patients
+  getPatients(): Observable<Patient[]> {
+    return this.http.get<{data: Patient[]}>(`${this.API_URL}/users/patients`).pipe(
+      map(response => response.data),
+      catchError(this.handleError)
+    );
   }
 
   private setSession(authResult: { user: User; token: string }): void {

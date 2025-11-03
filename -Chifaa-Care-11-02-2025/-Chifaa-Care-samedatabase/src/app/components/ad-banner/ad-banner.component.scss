@@ -5,7 +5,7 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 100vh;
+  height: 200vh;
 }
 
 .ad-banner {
@@ -16,7 +16,8 @@
   &.ad-banner-left {
     top: calc(var(--nav-h) + 50px); // Position below navbar with some spacing
     left: 5px;
-    width: clamp(300px, 15vw, 350px);
+    width: clamp(250px, 15vw, 300px);
+    height: 200px; // Fixed height for the banner container
     
     .ad-banner-content {
       animation: slideDownFade 1s ease-out forwards;
@@ -26,11 +27,26 @@
   &.ad-banner-right {
     top: calc(var(--nav-h) + 50px); // Position below navbar with some spacing
     right: 5px;
-    width: clamp(180px, 15vw, 250px);
+    width: 15%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  &:hover {
+    transform: translateY(-2px);
   }
 }
 
 .ad-banner-content {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  box-sizing: border-box;
   background: white;
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
@@ -47,6 +63,9 @@
 .ad-image {
   width: 100%;
   height: auto;
+  max-height: 150px;
+  object-fit: contain;
+  border-radius: 4px;
   display: block;
 }
 
@@ -54,34 +73,40 @@
 .pharmacy-slideshow {
   position: relative;
   width: 100%;
-  height: auto;
+  height: 180px; // Fixed height for consistency
+  overflow: hidden;
+  border-radius: 6px;
+  background-color: #f8f9fa;
   
   .slide-image {
-    width: 100%;
-    height: auto;
-    display: block;
     position: absolute;
     top: 0;
     left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     opacity: 0;
-    animation: imageSlideshow 8s infinite;
+    transition: opacity 0.5s ease-in-out;
+    border-radius: 6px;
+    background-color: white;
+    padding: 10px;
+    box-sizing: border-box;
     
-    // First image
-    &:nth-child(1) {
-      animation-delay: 0s;
+    img {
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      display: block;
     }
     
-    // Second image
-    &:nth-child(2) {
-      animation-delay: 2s;
+    &.active {
+      opacity: 1;
+      z-index: 1;
     }
-    
-    // Third image
-    &:nth-child(3) {
-      animation-delay: 4s;
-    }
-    
-    // Fourth image
     &:nth-child(4) {
       animation-delay: 6s;
     }
@@ -90,6 +115,7 @@
   // First image needs to be visible initially for height calculation
   .slide-image:first-child {
     position: relative;
+    display: flex;
   }
 }
 

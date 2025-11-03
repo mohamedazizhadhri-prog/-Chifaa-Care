@@ -217,6 +217,13 @@
     gap: 0.75rem;
   }
   
+  /* Messages buttons container */
+  .nav-messages-container {
+    display: flex;
+    gap: 0.5rem;
+    margin-right: 0.75rem;
+  }
+
   /* Messages button beside user badge */
   .nav-messages-btn {
     display: flex;
@@ -232,6 +239,7 @@
     cursor: pointer;
     transition: all 0.3s ease;
     box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+    white-space: nowrap;
     
     &:hover {
       background: linear-gradient(135deg, #1d4ed8, #1e40af);
@@ -244,8 +252,19 @@
     }
     
     .messages-text {
-      @media (max-width: 768px) {
+      @media (max-width: 1024px) {
         display: none;
+      }
+    }
+    
+    /* Doctor messages button specific styles */
+    &.doctor-messages {
+      background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+      box-shadow: 0 2px 8px rgba(139, 92, 246, 0.25);
+      
+      &:hover {
+        background: linear-gradient(135deg, #7c3aed, #6d28d9);
+        box-shadow: 0 4px 12px rgba(139, 92, 246, 0.35);
       }
     }
   }

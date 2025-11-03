@@ -38,16 +38,30 @@ import { AuthService, User } from '../../services/auth.service';
         </div>
         <ng-template #userBadgeTpl>
                       <div class="nav-user-wrap" #userBadgeRef>
-              <!-- Messages Button for Patients -->
-              <button 
-                *ngIf="currentUser?.role === 'patient'"
-                class="nav-messages-btn" 
-                type="button" 
-                (click)="onMessages()"
-                title="Messages">
-                <i class="fas fa-envelope"></i>
-                <span class="messages-text">Messages</span>
-              </button>
+              <!-- Messages Buttons -->
+              <div class="nav-messages-container">
+                <!-- Messages Button for Patients -->
+                <button 
+                  *ngIf="currentUser?.role === 'patient'"
+                  class="nav-messages-btn" 
+                  type="button" 
+                  (click)="onMessages()"
+                  title="Messages">
+                  <i class="fas fa-envelope"></i>
+                  <span class="messages-text">Messages</span>
+                </button>
+
+                <!-- Doctor Messages Button -->
+                <button 
+                  *ngIf="currentUser?.role === 'doctor'"
+                  class="nav-messages-btn doctor-messages" 
+                  type="button"
+                  (click)="onDoctorMessages()"
+                  title="Doctor Messages">
+                  <i class="fas fa-user-md"></i>
+                  <span class="messages-text">Doctor Messages</span>
+                </button>
+              </div>
               
               <button class="nav-user-badge" type="button" (click)="toggleUserMenu()" [class.patient]="currentUser?.role==='patient'" [class.doctor]="currentUser?.role==='doctor'">
               <div class="nav-id-badge">
@@ -261,6 +275,11 @@ export class NavbarComponent implements OnInit {
   onMessages() {
     this.isUserMenuOpen = false;
     this.router.navigate(['/patient/messages']);
+  }
+
+  onDoctorMessages() {
+    this.isUserMenuOpen = false;
+    this.router.navigate(['/doctor/messages']);
   }
 
   logout() {

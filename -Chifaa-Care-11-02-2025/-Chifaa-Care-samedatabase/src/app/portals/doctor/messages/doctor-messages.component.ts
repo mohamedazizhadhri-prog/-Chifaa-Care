@@ -1,6 +1,7 @@
 import { Component, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router, RouterModule } from '@angular/router';
 import { AuthService, User } from '../../../services/auth.service';
 import { MessageService } from '../../../services/message.service';
 import { SocketService } from '../../../services/socket.service';
@@ -10,16 +11,18 @@ import { User as PatientUser } from '../../../models/user.model';
 @Component({
   selector: 'app-doctor-messages',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterModule],
   template: `
     <div class="messages-container fade-in">
       <div class="messages-layout">
         <!-- Chat List Sidebar -->
         <aside class="chat-sidebar card lift">
           <div class="sidebar-header">
-            <div class="card-header">Messages</div>
-            <div class="unread-count" *ngIf="getUnreadCount() > 0">
-              {{ getUnreadCount() }}
+            <div class="card-header">
+              <span>Patient Messages</span>
+              <div class="unread-count" *ngIf="getUnreadCount() > 0">
+                {{ getUnreadCount() }}
+              </div>
             </div>
           </div>
           <div class="sidebar-actions" style="margin-bottom: 8px; display: flex; gap: 8px;">
@@ -510,6 +513,7 @@ export class DoctorMessagesComponent implements OnInit, OnDestroy {
   @ViewChild('localVideo') localVideo?: ElementRef<HTMLVideoElement>;
   @ViewChild('remoteVideo') remoteVideo?: ElementRef<HTMLVideoElement>;
   private currentCallId: string | null = null;
+  // Socket is now accessed through socketService 
   // Ringing and incoming state
   dialing = false;
   incomingCall = false;
@@ -518,7 +522,13 @@ export class DoctorMessagesComponent implements OnInit, OnDestroy {
   private ringOsc?: OscillatorNode;
   private ringGain?: GainNode;
 
-  constructor(private authService: AuthService, private messageService: MessageService, private socket: SocketService, private patientService: PatientService) {}
+  constructor(
+    private authService: AuthService,
+    private messageService: MessageService,
+    private socketService: SocketService,
+    private patientService: PatientService,
+    private router: Router
+  ) { }
 
   ngOnInit() {
     // Load current user then conversations
@@ -527,8 +537,10 @@ export class DoctorMessagesComponent implements OnInit, OnDestroy {
         this.currentDoctorId = user.id;
         this.loadConversations();
         this.loadPatients();
-        this.socket.connect(user.id);
-        this.socket.on<any>('message:new', (m) => {
+        this.socketService.connect(user.id);
+        
+        // Use socketService for all socket operations
+        this.socketService.on<any>('message:new', (m) => {
           if (!m) return;
           const isSelf = m.senderId === this.currentDoctorId;
           const isToMe = m.recipientId === this.currentDoctorId;
@@ -562,7 +574,7 @@ export class DoctorMessagesComponent implements OnInit, OnDestroy {
         });
 
         // Presence updates
-        this.socket.on<any>('presence:update', (p: { userId: string; online: boolean }) => {
+        this.socketService.on<any>('presence:update', (p: { userId: string; online: boolean }) => {
           const chat = this.allChats.find(c => c.id === p.userId);
           if (chat) chat.isOnline = p.online;
         });
@@ -637,23 +649,28 @@ export class DoctorMessagesComponent implements OnInit, OnDestroy {
     if (!this.currentDoctorId || !this.selectedChatId) return;
     this.mediaType = type;
     // Wait for accept; play dialing
-    this.socket.emit('call:request', { fromUserId: this.currentDoctorId, toUserId: this.selectedChatId, media: type });
+    this.socketService.emit('call:request', { fromUserId: this.currentDoctorId, toUserId: this.selectedChatId, media: type });
     this.startRinging(true);
-    this.dialing = true;
   }
 
   viewPatientProfile() {
     console.log('Viewing profile of', this.selectedChat?.patientName);
-    // Navigate to patient profile
+    this.navigateToDoctorMessages();
+  }
+
+  navigateToDoctorMessages() {
+    this.router.navigate(['/doctor/doctor-messages']);
+  }
+
+  navigateToDoctorToDoctorMessages() {
+    this.router.navigate(['/doctor/doctor-messages']);
   }
 
   private loadConversations() {
-    if (!this.currentDoctorId) return;
     this.messageService.getConversations(this.currentDoctorId).subscribe(res => {
-      const convs = res.data.conversations;
-      this.allChats = convs.map(c => ({
-        id: c.otherUserId,
-        patientName: c.name,
+      this.allChats = res.data.conversations.map((c: any) => ({
+        id: c.otherUserId, // Using otherUserId as the ID
+        patientName: c.name, // Using name as patientName
         lastMessage: c.lastMessage,
         lastMessageTime: new Date(c.lastMessageTime).toLocaleString(),
         unreadCount: c.unreadCount,
@@ -703,7 +720,7 @@ export class DoctorMessagesComponent implements OnInit, OnDestroy {
   // --- WebRTC signaling and lifecycle ---
   private setupSignalingListeners() {
     // Incoming call
-    this.socket.on<any>('call:incoming', async (p: { fromUserId: string; toUserId: string; media: 'audio' | 'video' }) => {
+    this.socketService.on<any>('call:incoming', async (p: { fromUserId: string; toUserId: string; media: 'audio' | 'video' }) => {
       if (!this.currentDoctorId || p.toUserId !== this.currentDoctorId) return;
       this.mediaType = p.media;
       this.selectedChatId = p.fromUserId;
@@ -713,26 +730,31 @@ export class DoctorMessagesComponent implements OnInit, OnDestroy {
     });
 
     // Offer from remote
-    this.socket.on<any>('call:offer', async (p: { fromUserId: string; toUserId: string; sdp: any }) => {
+    this.socketService.on<any>('call:offer', async (p: { fromUserId: string; toUserId: string; sdp: any }) => {
       if (!this.currentDoctorId || p.toUserId !== this.currentDoctorId) return;
       if (!this.pc) await this.preparePeer(this.mediaType);
       await this.pc!.setRemoteDescription(new RTCSessionDescription(p.sdp));
       const answer = await this.pc!.createAnswer();
       await this.pc!.setLocalDescription(answer);
-      this.socket.emit('call:answer', { fromUserId: this.currentDoctorId, toUserId: p.fromUserId, sdp: answer });
+      this.socketService.emit('call:answer', { 
+        fromUserId: this.currentDoctorId, 
+        toUserId: p.fromUserId, 
+        sdp: answer,
+        callId: this.currentCallId
+      });
       this.stopRinging();
       this.inCall = true;
       this.incomingCall = false;
     });
 
     // Answer from remote
-    this.socket.on<any>('call:answer', async (p: { fromUserId: string; toUserId: string; sdp: any }) => {
+    this.socketService.on<any>('call:answer', async (p: { fromUserId: string; toUserId: string; sdp: any }) => {
       if (!this.currentDoctorId || p.toUserId !== this.currentDoctorId) return;
       await this.pc?.setRemoteDescription(new RTCSessionDescription(p.sdp));
     });
 
     // ICE candidates
-    this.socket.on<any>('call:ice-candidate', async (p: { fromUserId: string; toUserId: string; candidate: any }) => {
+    this.socketService.on<any>('call:ice-candidate', async (p: { fromUserId: string; toUserId: string; candidate: any }) => {
       if (!this.currentDoctorId || p.toUserId !== this.currentDoctorId) return;
       try {
         if (p.candidate) await this.pc?.addIceCandidate(new RTCIceCandidate(p.candidate));
@@ -740,13 +762,13 @@ export class DoctorMessagesComponent implements OnInit, OnDestroy {
     });
 
     // Ended
-    this.socket.on<any>('call:ended', (p: { fromUserId: string; toUserId: string }) => {
+    this.socketService.on<any>('call:ended', (p: { fromUserId: string; toUserId: string }) => {
       if (!this.currentDoctorId || p.toUserId !== this.currentDoctorId) return;
       this.cleanupCall();
     });
 
     // Accepted (caller side)
-    this.socket.on<any>('call:accepted', async (p: { fromUserId: string; toUserId: string }) => {
+    this.socketService.on<any>('call:accepted', async (p: { fromUserId: string; toUserId: string }) => {
       if (!this.currentDoctorId || p.toUserId !== this.currentDoctorId) return;
       this.stopRinging();
       this.dialing = false;
@@ -755,12 +777,17 @@ export class DoctorMessagesComponent implements OnInit, OnDestroy {
       await this.preparePeer(this.mediaType);
       const offer = await this.pc!.createOffer();
       await this.pc!.setLocalDescription(offer);
-      this.socket.emit('call:offer', { fromUserId: this.currentDoctorId, toUserId: p.fromUserId, sdp: offer });
+      if (this.currentCallId) {
+        this.socketService.emit('call:offer', { 
+          callId: this.currentCallId, 
+          offer 
+        });
+      }
       this.inCall = true;
     });
 
     // Declined (caller side)
-    this.socket.on<any>('call:declined', (p: { fromUserId: string; toUserId: string }) => {
+    this.socketService.on<any>('call:declined', (p: { fromUserId: string; toUserId: string }) => {
       if (!this.currentDoctorId || p.toUserId !== this.currentDoctorId) return;
       this.stopRinging();
       this.dialing = false;
@@ -769,12 +796,12 @@ export class DoctorMessagesComponent implements OnInit, OnDestroy {
     });
 
     // Call started (callee side)
-    this.socket.on<any>('call:started', (p: { callId: string; startedAt: string }) => {
+    this.socketService.on<any>('call:started', (p: { callId: string; startedAt: string }) => {
       if (p?.callId) this.currentCallId = p.callId;
     });
 
     // Call ended: rely on backend-emitted system message via 'message:new'
-    this.socket.on<any>('call:ended', (p: { callId?: string; durationSec?: number }) => {
+    this.socketService.on<any>('call:ended', (p: { callId?: string; durationSec?: number }) => {
       if (p?.callId && this.currentCallId === p.callId) {
         // no local UI injection; messages will arrive through message:new
       }
@@ -787,7 +814,12 @@ export class DoctorMessagesComponent implements OnInit, OnDestroy {
     this.pc = new RTCPeerConnection({ iceServers: [{ urls: ['stun:stun.l.google.com:19302'] }] });
     this.pc.onicecandidate = (e) => {
       if (e.candidate && this.currentDoctorId && this.selectedChatId) {
-        this.socket.emit('call:ice-candidate', { fromUserId: this.currentDoctorId, toUserId: this.selectedChatId, candidate: e.candidate });
+        if (this.currentCallId) {
+        this.socketService.emit('call:ice-candidate', { 
+          callId: this.currentCallId, 
+          candidate: e.candidate 
+        });
+      }
       }
     };
     this.pc.ontrack = (ev) => {
@@ -807,7 +839,7 @@ export class DoctorMessagesComponent implements OnInit, OnDestroy {
 
   endCall() {
     if (this.currentDoctorId && this.selectedChatId) {
-      this.socket.emit('call:end', { fromUserId: this.currentDoctorId, toUserId: this.selectedChatId, callId: this.currentCallId });
+      this.socketService.emit('message:send', { fromUserId: this.currentDoctorId, toUserId: this.selectedChatId, callId: this.currentCallId });
     }
     this.cleanupCall();
   }
@@ -860,14 +892,18 @@ export class DoctorMessagesComponent implements OnInit, OnDestroy {
 
   // Incoming UI actions
   acceptIncoming() {
-    if (!this.currentDoctorId || !this.incomingFromUserId) return;
-    this.socket.emit('call:accept', { fromUserId: this.currentDoctorId, toUserId: this.incomingFromUserId });
+    if (!this.currentDoctorId || !this.incomingFromUserId || !this.currentCallId) return;
+    this.socketService.emit('call:accept', { 
+      callId: this.currentCallId,
+      fromUserId: this.currentDoctorId,
+      toUserId: this.incomingFromUserId
+    });
     // We'll create/answer on 'call:offer'
   }
 
   declineIncoming() {
     if (!this.currentDoctorId || !this.incomingFromUserId) return;
-    this.socket.emit('call:decline', { fromUserId: this.currentDoctorId, toUserId: this.incomingFromUserId });
+    this.socketService.emit('call:decline', { fromUserId: this.currentDoctorId, toUserId: this.incomingFromUserId });
     this.cleanupCall();
   }
 }

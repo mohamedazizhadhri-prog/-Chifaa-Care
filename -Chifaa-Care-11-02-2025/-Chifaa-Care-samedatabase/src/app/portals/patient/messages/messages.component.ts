@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { AuthService, User } from '../../../services/auth.service';
+import { AuthService, User, Patient } from '../../../services/auth.service';
 import { MessageService, Conversation, ChatMessage } from '../../../services/message.service';
 import { SocketService } from '../../../services/socket.service';
 import { DoctorService } from '../../../services/doctor.service';
@@ -680,27 +680,67 @@ export class PatientMessagesComponent implements OnInit, OnDestroy {
     // Navigate to book consultation page
   }
 
-  private loadConversations() {
+  private async loadConversations() {
     if (!this.currentPatientId) return;
-    this.messageService.getConversations(this.currentPatientId).subscribe(res => {
-      const convs = res.data.conversations;
-      // Map to existing UI chat shape
-      this.allChats = convs.map(c => ({
-        id: c.otherUserId,
-        doctorName: c.name,
-        specialty: c.role === 'DOCTOR' ? 'Doctor' : '',
-        lastMessage: c.lastMessage,
-        lastMessageTime: new Date(c.lastMessageTime).toLocaleString(),
-        unreadCount: c.unreadCount,
-        isOnline: false,
-        messages: []
-      }));
-      this.filteredChats = this.allChats;
-      if (this.allChats.length > 0) {
-        this.selectChat(this.allChats[0].id);
+    
+    try {
+      // Get all patients from the database
+      const patients = await this.authService.getPatients().toPromise();
+      if (!patients) {
+        console.error('No patients found');
+        return;
       }
-    });
-  }
+
+      // Create a map of patient IDs for quick lookup
+      const patientMap = new Map(patients.map(p => [p.id, p]));
+
+      // Get all conversations
+      const res = await this.messageService.getConversations(this.currentPatientId).toPromise();
+      
+      if (res?.data?.conversations) {
+        // Filter conversations to only include those with other patients
+        this.allChats = res.data.conversations
+          .filter(conversation => {
+            // Skip if this is the current user
+            if (conversation.otherUserId === this.currentPatientId) {
+              return false;
+            }
+            
+            // Only include if the other user is a patient
+            const isPatient = patientMap.has(conversation.otherUserId);
+            if (!isPatient) {
+              console.log(`Filtering out non-patient user: ${conversation.name} (${conversation.otherUserId})`);
+              return false;
+            }
+            
+            return true;
+          })
+          .map(conversation => {
+            const patient = patientMap.get(conversation.otherUserId);
+            return {
+              id: conversation.otherUserId,
+              doctorName: patient?.name || 'Patient',
+              specialty: 'Patient',
+              lastMessage: conversation.lastMessage,
+              lastMessageTime: new Date(conversation.lastMessageTime).toLocaleString(),
+              unreadCount: conversation.unreadCount || 0,
+              isOnline: false,
+              messages: []
+            };
+          });
+
+        console.log('Filtered conversations:', {
+          total: res.data.conversations.length,
+          patientConversations: this.allChats.length,
+          patientIds: patients.map(p => p.id)
+        });
+
+        this.filteredChats = [...this.allChats];
+      }
+    } catch (error) {
+      console.error('Error loading conversations:', error);
+    }
+}
 
   private loadDoctors() {
     this.doctorService.getDoctors().subscribe(list => {

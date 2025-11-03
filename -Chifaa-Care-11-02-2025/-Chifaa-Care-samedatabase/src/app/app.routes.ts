@@ -65,7 +65,7 @@ export const routes: Routes = [
       { path: 'consultations', loadComponent: () => import('./portals/doctor/consultations/consultations.component').then(m => m.ConsultationsComponent) },
       { path: 'treatment-management', loadComponent: () => import('./portals/doctor/treatment-plan-management/treatment-plan-management.component').then(m => m.TreatmentPlanManagementComponent) },
       { path: 'ai-reports', loadComponent: () => import('./portals/doctor/ai-reports/doctor-ai-reports.component').then(m => m.DoctorAiReportsComponent) },
-      { path: 'messages', loadComponent: () => import('./portals/doctor/messages/doctor-messages.component').then(m => m.DoctorMessagesComponent) },
+      { path: 'messages', loadComponent: () => import('./portals/doctor/messages/doctor-messages-wrapper.component').then(m => m.DoctorMessagesWrapperComponent) },
       { path: 'settings', loadComponent: () => import('./portals/doctor/settings/doctor-settings.component').then(m => m.DoctorSettingsComponent) },
       { path: 'account', loadComponent: () => import('./shared/components/account-redirect/account-redirect.component').then(m => m.AccountRedirectComponent) },
     ]
