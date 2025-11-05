@@ -1,0 +1,441 @@
+import { Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { AppointmentService } from '../../../services/appointment.service';
+import { AuthService, User } from '../../../services/auth.service';
+import { NgbModal, NgbModule } from '@ng-bootstrap/ng-bootstrap';
+
+interface CalendarEvent {
+  id: string;
+  title: string;
+  start: Date;
+  end: Date;
+  status: string;
+  reason?: string;
+  patientId: string;
+  patientName: string;
+  patientEmail: string;
+}
+
+type ViewMode = 'day' | 'week' | '2weeks' | 'month';
+
+@Component({
+  selector: 'app-doctor-calendar',
+  standalone: true,
+  imports: [CommonModule, FormsModule, NgbModule],
+  templateUrl: './doctor-calendar.component.html',
+  styleUrls: ['./doctor-calendar.component.scss']
+})
+export class DoctorCalendarComponent implements OnInit {
+  viewMode: ViewMode = 'week';
+  currentDate: Date = new Date();
+  currentWeekStart: Date = new Date();
+  weekDays: Date[] = [];
+  twoWeeksDays: Date[] = [];
+  monthDays: Date[] = [];
+  hours: string[] = [];
+  events: CalendarEvent[] = [];
+  loading = false;
+  error = '';
+  currentMonthName = '';
+  currentYear = 0;
+
+  selectedEvent: CalendarEvent | null = null;
+  processing = false;
+  showRescheduleForm = false;
+  rescheduleDate = '';
+  rescheduleTime = '';
+  rescheduleReason = '';
+
+  constructor(
+    private appointmentService: AppointmentService,
+    private authService: AuthService,
+    private modalService: NgbModal
+  ) {
+    this.initializeHours();
+  }
+
+  ngOnInit() {
+    this.setCurrentWeek();
+    this.setTwoWeeks();
+    this.setCurrentMonth();
+    this.loadAppointments();
+  }
+
+  private initializeHours() {
+    for (let i = 8; i <= 18; i++) {
+      this.hours.push(`${i}:00`);
+    }
+  }
+
+  private setCurrentWeek() {
+    const day = this.currentDate.getDay();
+    const diff = this.currentDate.getDate() - day + (day === 0 ? -6 : 1);
+    this.currentWeekStart = new Date(this.currentDate);
+    this.currentWeekStart.setDate(diff);
+    this.currentWeekStart.setHours(0, 0, 0, 0);
+    
+    this.weekDays = [];
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(this.currentWeekStart);
+      date.setDate(this.currentWeekStart.getDate() + i);
+      this.weekDays.push(date);
+    }
+  }
+
+  private setTwoWeeks() {
+    const day = this.currentDate.getDay();
+    const diff = this.currentDate.getDate() - day + (day === 0 ? -6 : 1);
+    this.currentWeekStart = new Date(this.currentDate);
+    this.currentWeekStart.setDate(diff);
+    this.currentWeekStart.setHours(0, 0, 0, 0);
+    
+    this.twoWeeksDays = [];
+    for (let i = 0; i < 14; i++) {
+      const date = new Date(this.currentWeekStart);
+      date.setDate(this.currentWeekStart.getDate() + i);
+      this.twoWeeksDays.push(date);
+    }
+  }
+
+  private setCurrentMonth() {
+    const year = this.currentDate.getFullYear();
+    const month = this.currentDate.getMonth();
+    this.currentMonthName = this.currentDate.toLocaleDateString('en-US', { month: 'long' });
+    this.currentYear = year;
+    
+    const firstDay = new Date(year, month, 1);
+    const startDay = firstDay.getDay();
+    const startOffset = startDay === 0 ? 6 : startDay - 1;
+    
+    this.monthDays = [];
+    const startDate = new Date(firstDay);
+    startDate.setDate(startDate.getDate() - startOffset);
+    
+    for (let i = 0; i < 42; i++) {
+      const date = new Date(startDate);
+      date.setDate(startDate.getDate() + i);
+      this.monthDays.push(date);
+    }
+  }
+
+  private loadAppointments() {
+    const user: User | null = this.authService.getCurrentUser();
+    if (!user || user.role !== 'doctor') {
+      this.error = 'You must be logged in as a doctor';
+      return;
+    }
+
+    this.loading = true;
+    let startDate: Date;
+    let endDate: Date;
+    
+    if (this.viewMode === 'day') {
+      startDate = new Date(this.currentDate);
+      startDate.setHours(0, 0, 0, 0);
+      endDate = new Date(this.currentDate);
+      endDate.setHours(23, 59, 59, 999);
+    } else if (this.viewMode === 'month') {
+      startDate = new Date(this.monthDays[0]);
+      endDate = new Date(this.monthDays[this.monthDays.length - 1]);
+      endDate.setHours(23, 59, 59, 999);
+    } else if (this.viewMode === '2weeks') {
+      startDate = new Date(this.twoWeeksDays[0]);
+      endDate = new Date(this.twoWeeksDays[13]);
+      endDate.setHours(23, 59, 59, 999);
+    } else {
+      startDate = new Date(this.weekDays[0]);
+      endDate = new Date(this.weekDays[6]);
+      endDate.setHours(23, 59, 59, 999);
+    }
+
+    this.appointmentService.getAppointments({
+      doctorId: user.id,
+      startDate,
+      endDate
+    }).subscribe({
+      next: (appointments) => {
+        this.events = appointments.map((apt: any) => ({
+          id: apt.id,
+          title: `${apt.patient?.firstName || ''} ${apt.patient?.lastName || ''}`.trim() || 'Patient',
+          start: new Date(apt.appointmentDate),
+          end: new Date(apt.endTime),
+          status: apt.status,
+          reason: apt.reason,
+          patientId: apt.patient?.id || '',
+          patientName: `${apt.patient?.firstName || ''} ${apt.patient?.lastName || ''}`.trim() || 'Patient',
+          patientEmail: apt.patient?.email || ''
+        }));
+        this.loading = false;
+      },
+      error: (err) => {
+        console.error('Failed to load appointments', err);
+        this.error = 'Failed to load appointments';
+        this.loading = false;
+      }
+    });
+  }
+
+  getEventsForSlot(day: Date, hour: string): CalendarEvent[] {
+    const [hourNum] = hour.split(':').map(Number);
+    return this.events.filter(event => {
+      const eventDay = new Date(event.start);
+      const eventHour = eventDay.getHours();
+      
+      return (
+        eventDay.toDateString() === day.toDateString() &&
+        eventHour === hourNum
+      );
+    });
+  }
+
+  getEventsForDay(day: Date): CalendarEvent[] {
+    return this.events.filter(event => {
+      const eventDay = new Date(event.start);
+      return eventDay.toDateString() === day.toDateString();
+    });
+  }
+
+  isCurrentMonth(date: Date): boolean {
+    return date.getMonth() === this.currentDate.getMonth();
+  }
+
+  getDayName(date: Date): string {
+    return date.toLocaleDateString('en-US', { weekday: 'short' });
+  }
+
+  getDayDate(date: Date): string {
+    return date.getDate().toString();
+  }
+
+  isToday(date: Date): boolean {
+    const today = new Date();
+    return date.toDateString() === today.toDateString();
+  }
+
+  formatTime(date: Date): string {
+    return new Date(date).toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true 
+    });
+  }
+
+  formatDateTime(date: Date): string {
+    return new Date(date).toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+  }
+
+  previousWeek() {
+    const newDate = new Date(this.currentDate);
+    newDate.setDate(newDate.getDate() - 7);
+    this.currentDate = newDate;
+    this.setCurrentWeek();
+    this.setTwoWeeks();
+    this.loadAppointments();
+  }
+
+  nextWeek() {
+    const newDate = new Date(this.currentDate);
+    newDate.setDate(newDate.getDate() + 7);
+    this.currentDate = newDate;
+    this.setCurrentWeek();
+    this.setTwoWeeks();
+    this.loadAppointments();
+  }
+
+  previousTwoWeeks() {
+    const newDate = new Date(this.currentDate);
+    newDate.setDate(newDate.getDate() - 14);
+    this.currentDate = newDate;
+    this.setTwoWeeks();
+    this.loadAppointments();
+  }
+
+  nextTwoWeeks() {
+    const newDate = new Date(this.currentDate);
+    newDate.setDate(newDate.getDate() + 14);
+    this.currentDate = newDate;
+    this.setTwoWeeks();
+    this.loadAppointments();
+  }
+
+  previousDay() {
+    const newDate = new Date(this.currentDate);
+    newDate.setDate(newDate.getDate() - 1);
+    this.currentDate = newDate;
+    this.loadAppointments();
+  }
+
+  nextDay() {
+    const newDate = new Date(this.currentDate);
+    newDate.setDate(newDate.getDate() + 1);
+    this.currentDate = newDate;
+    this.loadAppointments();
+  }
+
+  previousMonth() {
+    const newDate = new Date(this.currentDate);
+    newDate.setMonth(newDate.getMonth() - 1);
+    this.currentDate = newDate;
+    this.setCurrentMonth();
+    this.loadAppointments();
+  }
+
+  nextMonth() {
+    const newDate = new Date(this.currentDate);
+    newDate.setMonth(newDate.getMonth() + 1);
+    this.currentDate = newDate;
+    this.setCurrentMonth();
+    this.loadAppointments();
+  }
+
+  today() {
+    this.currentDate = new Date();
+    this.setCurrentWeek();
+    this.setTwoWeeks();
+    this.setCurrentMonth();
+    this.loadAppointments();
+  }
+
+  setViewMode(mode: ViewMode) {
+    this.viewMode = mode;
+    if (mode === 'month') {
+      this.setCurrentMonth();
+    } else if (mode === '2weeks') {
+      this.setTwoWeeks();
+    } else if (mode === 'week') {
+      this.setCurrentWeek();
+    }
+    this.loadAppointments();
+  }
+
+  previous() {
+    if (this.viewMode === 'day') this.previousDay();
+    else if (this.viewMode === 'week') this.previousWeek();
+    else if (this.viewMode === '2weeks') this.previousTwoWeeks();
+    else this.previousMonth();
+  }
+
+  next() {
+    if (this.viewMode === 'day') this.nextDay();
+    else if (this.viewMode === 'week') this.nextWeek();
+    else if (this.viewMode === '2weeks') this.nextTwoWeeks();
+    else this.nextMonth();
+  }
+
+  getCurrentDateRange(): string {
+    if (this.viewMode === 'day') {
+      return this.currentDate.toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        month: 'long', 
+        day: 'numeric', 
+        year: 'numeric' 
+      });
+    } else if (this.viewMode === 'month') {
+      return `${this.currentMonthName} ${this.currentYear}`;
+    } else if (this.viewMode === '2weeks') {
+      const start = this.twoWeeksDays[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const end = this.twoWeeksDays[13].toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      return `${start} - ${end}`;
+    } else {
+      const start = this.weekDays[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const end = this.weekDays[6].toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      return `${start} - ${end}`;
+    }
+  }
+
+  openEventModal(event: CalendarEvent, modal: any) {
+    this.selectedEvent = event;
+    this.showRescheduleForm = false;
+    this.modalService.open(modal, { size: 'lg', centered: true });
+  }
+
+  acceptAppointment() {
+    if (!this.selectedEvent || this.processing) return;
+    
+    this.processing = true;
+    this.appointmentService.confirmAppointment(this.selectedEvent.id).subscribe({
+      next: () => {
+        this.processing = false;
+        this.modalService.dismissAll();
+        this.loadAppointments();
+      },
+      error: (err) => {
+        console.error('Failed to accept appointment', err);
+        alert('Failed to accept appointment');
+        this.processing = false;
+      }
+    });
+  }
+
+  rejectAppointment() {
+    if (!this.selectedEvent || this.processing) return;
+    
+    if (!confirm('Are you sure you want to reject this appointment?')) return;
+    
+    this.processing = true;
+    this.appointmentService.setStatus(this.selectedEvent.id, 'CANCELLED').subscribe({
+      next: () => {
+        this.processing = false;
+        this.modalService.dismissAll();
+        this.loadAppointments();
+      },
+      error: (err) => {
+        console.error('Failed to reject appointment', err);
+        alert('Failed to reject appointment');
+        this.processing = false;
+      }
+    });
+  }
+
+  canReschedule(): boolean {
+    return !!(this.rescheduleDate && this.rescheduleTime);
+  }
+
+  confirmReschedule() {
+    if (!this.selectedEvent || !this.canReschedule() || this.processing) return;
+    
+    this.processing = true;
+    const dateTime = `${this.rescheduleDate}T${this.rescheduleTime}:00`;
+    const start = new Date(dateTime);
+    const end = new Date(start.getTime() + 30 * 60 * 1000);
+    
+    this.appointmentService.rescheduleAppointment(
+      this.selectedEvent.id,
+      start.toISOString(),
+      end.toISOString(),
+      this.rescheduleReason
+    ).subscribe({
+      next: () => {
+        this.processing = false;
+        this.modalService.dismissAll();
+        this.loadAppointments();
+        alert('Appointment rescheduled successfully');
+      },
+      error: (err) => {
+        console.error('Failed to reschedule appointment', err);
+        alert('Failed to reschedule appointment');
+        this.processing = false;
+      }
+    });
+  }
+
+  cancelReschedule() {
+    this.showRescheduleForm = false;
+    this.rescheduleDate = '';
+    this.rescheduleTime = '';
+    this.rescheduleReason = '';
+  }
+
+  getMinDate(): string {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  }
+}
