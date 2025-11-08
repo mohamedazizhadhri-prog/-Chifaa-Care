@@ -1,0 +1,331 @@
+.ad-banner-container {
+  pointer-events: none;
+  z-index: 999;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100vh;
+}
+
+// Right static banner (keep original)
+.ad-banner {
+  position: fixed;
+  pointer-events: auto;
+  z-index: 999;
+  
+  &.ad-banner-right {
+    top: calc(var(--nav-h, 80px) + 50px);
+    right: 5px;
+    width: clamp(250px, 15vw, 300px);
+    height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  &:hover {
+    transform: translateY(-2px);
+  }
+}
+
+.ad-banner-content {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  box-sizing: border-box;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  border: 2px solid #e5e7eb;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+  }
+}
+
+.ad-image {
+  width: 100%;
+  height: auto;
+  max-height: 150px;
+  object-fit: contain;
+  border-radius: 4px;
+  display: block;
+}
+
+// ============================================
+// NEWS TICKER STYLE BANNER (Bottom)
+// ============================================
+.news-ticker-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 80px;
+  z-index: 1000;
+  pointer-events: auto;
+  overflow: hidden;
+  
+  // Glassmorphism effect - you can see through it!
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  
+  // Subtle border on top
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 
+    0 -4px 30px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  
+  // Optional: Add a gradient overlay for more depth
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.1) 0%,
+      rgba(255, 255, 255, 0.05) 100%
+    );
+    pointer-events: none;
+  }
+}
+
+.ticker-content {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.ticker-track {
+  display: flex;
+  align-items: center;
+  animation: scrollTicker 30s linear infinite;
+  white-space: nowrap;
+  
+  &:hover {
+    animation-play-state: paused;
+  }
+}
+
+@keyframes scrollTicker {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-33.333%); // Move by 1/3 since we tripled the content
+  }
+}
+
+.ticker-item {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 40px;
+  flex-shrink: 0;
+}
+
+.ticker-logo-wrapper {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  padding: 12px 24px;
+  border-radius: 12px;
+  box-shadow: 
+    0 4px 15px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  transition: all 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  
+  &:hover {
+    transform: translateY(-5px) scale(1.05);
+    box-shadow: 
+      0 8px 25px rgba(0, 0, 0, 0.15),
+      inset 0 1px 0 rgba(255, 255, 255, 1);
+    background: rgba(255, 255, 255, 0.95);
+  }
+}
+
+.ticker-logo {
+  height: 45px;
+  width: auto;
+  max-width: 150px;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+.ticker-separator {
+  font-size: 24px;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0 20px;
+  font-weight: bold;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+// Loading and error states
+.loading-state,
+.error-message {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 20px;
+  text-align: center;
+  color: #666;
+  font-size: 14px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  z-index: 10001;
+  
+  .spinner {
+    width: 30px;
+    height: 30px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 10px;
+  }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error-message {
+  color: #ff4757;
+  font-size: 12px;
+}
+
+// Responsive adjustments
+@media (max-width: 1200px) {
+  .ad-banner {
+    &.ad-banner-right {
+      width: clamp(150px, 12vw, 200px);
+    }
+  }
+  
+  .ticker-logo {
+    height: 40px;
+    max-width: 120px;
+  }
+  
+  .ticker-item {
+    margin: 0 30px;
+  }
+}
+
+@media (max-width: 968px) {
+  .ad-banner {
+    &.ad-banner-right {
+      right: 10px;
+    }
+  }
+  
+  .news-ticker-banner {
+    height: 70px;
+  }
+  
+  .ticker-logo {
+    height: 35px;
+    max-width: 100px;
+  }
+  
+  .ticker-item {
+    margin: 0 25px;
+  }
+  
+  .ticker-logo-wrapper {
+    padding: 10px 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .ad-banner {
+    &.ad-banner-right {
+      display: none; // Hide right banner on mobile
+    }
+  }
+  
+  .news-ticker-banner {
+    height: 60px;
+  }
+  
+  .ticker-logo {
+    height: 30px;
+    max-width: 80px;
+  }
+  
+  .ticker-item {
+    margin: 0 20px;
+  }
+  
+  .ticker-logo-wrapper {
+    padding: 8px 16px;
+  }
+  
+  .ticker-separator {
+    font-size: 20px;
+    margin: 0 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .news-ticker-banner {
+    height: 55px;
+  }
+  
+  .ticker-logo {
+    height: 28px;
+    max-width: 70px;
+  }
+  
+  .ticker-item {
+    margin: 0 15px;
+  }
+  
+  .ticker-logo-wrapper {
+    padding: 6px 12px;
+  }
+}
+
+// Accessibility: Respect user's motion preferences
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track {
+    animation-duration: 60s; // Slower animation
+  }
+  
+  .ticker-logo-wrapper:hover {
+    transform: none; // No hover animation
+  }
+}
+
+// Dark mode support (optional)
+@media (prefers-color-scheme: dark) {
+  .news-ticker-banner {
+    background: rgba(0, 0, 0, 0.3);
+    border-top-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .ticker-logo-wrapper {
+    background: rgba(0, 0, 0, 0.4);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+  
+  .ticker-separator {
+    color: rgba(255, 255, 255, 0.4);
+  }
+}

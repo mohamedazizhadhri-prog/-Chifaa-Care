@@ -1,0 +1,359 @@
+╔══════════════════════════════════════════════════════════════════════════╗
+║                    CHIFAA CARE - SYSTEM ARCHITECTURE                     ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────────┐
+│                           🌐 CLIENT LAYER                                 │
+└──────────────────────────────────────────────────────────────────────────┘
+
+                            ┌─────────────────┐
+                            │   Web Browser   │
+                            │  (Chrome, etc.) │
+                            └────────┬────────┘
+                                     │
+                                     │ HTTP/HTTPS
+                                     │ Port 4200
+                                     ▼
+                            ┌─────────────────┐
+                            │     Angular     │
+                            │    Frontend     │
+                            │  (ChifaaCare)   │
+                            └────────┬────────┘
+                                     │
+                                     │ REST API
+                                     │ WebSocket (Socket.io)
+                                     │
+
+┌──────────────────────────────────────────────────────────────────────────┐
+│                        🔧 APPLICATION LAYER                               │
+└──────────────────────────────────────────────────────────────────────────┘
+
+                                     │
+                                     ▼
+                            ┌─────────────────┐
+                            │   Express.js    │
+                            │  Backend API    │
+                            │   Port 3000     │
+                            └────────┬────────┘
+                                     │
+                    ┌────────────────┼────────────────┐
+                    │                │                │
+                    ▼                ▼                ▼
+          ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+          │     Auth     │  │   Business   │  │  WebSocket   │
+          │  Middleware  │  │    Logic     │  │   Server     │
+          │   (JWT/     │  │  (Services)  │  │ (Real-time   │
+          │  Passport)  │  │              │  │  Messages)   │
+          └──────┬───────┘  └──────┬───────┘  └──────┬───────┘
+                 │                 │                 │
+                 └─────────────────┼─────────────────┘
+                                   │
+                                   ▼
+                          ┌─────────────────┐
+                          │  Prisma ORM     │
+                          │  (Query Layer)  │
+                          └────────┬────────┘
+                                   │
+                                   │ Database Queries
+                                   │ SSL Connection
+                                   │
+
+┌──────────────────────────────────────────────────────────────────────────┐
+│                         🗄️  DATABASE LAYER                               │
+└──────────────────────────────────────────────────────────────────────────┘
+
+                                   │
+                                   ▼
+                     ┌──────────────────────────┐
+                     │    Neon PostgreSQL       │
+                     │   (Cloud Database)       │
+                     │                          │
+                     │  Region: EU Central      │
+                     │  SSL: Enabled ✓          │
+                     │  Connection Pooling ✓    │
+                     └──────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────┐
+│                      🔌 EXTERNAL SERVICES                                 │
+└──────────────────────────────────────────────────────────────────────────┘
+
+         ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+         │   Stripe    │    │ Cloudinary  │    │  AWS S3     │
+         │  (Payments) │    │   (Images)  │    │(Documents)  │
+         └─────────────┘    └─────────────┘    └─────────────┘
+
+═════════════════════════════════════════════════════════════════════════════
+
+                        DATABASE SCHEMA OVERVIEW
+
+═════════════════════════════════════════════════════════════════════════════
+
+┌────────────────────────────────────────────────────────────────────────┐
+│  👥 USER MANAGEMENT                                                    │
+└────────────────────────────────────────────────────────────────────────┘
+
+         ┌─────────────┐
+         │    User     │◄─────────┐
+         └──────┬──────┘          │
+                │                 │
+       ┌────────┴────────┐        │
+       │                 │        │
+       ▼                 ▼        │
+┌──────────────┐  ┌──────────────┐│
+│DoctorProfile │  │PatientProfile││
+└──────┬───────┘  └──────┬───────┘│
+       │                 │        │
+       ▼                 ▼        │
+┌──────────────┐  ┌──────────────┐│
+│  Education   │  │MedicalHistory││
+└──────────────┘  │EmergencyContact│
+                  │InsuranceInfo │
+                  └──────────────┘
+
+┌────────────────────────────────────────────────────────────────────────┐
+│  📅 APPOINTMENT & HEALTHCARE                                           │
+└────────────────────────────────────────────────────────────────────────┘
+
+         ┌──────────────┐
+         │ Appointment  │
+         └──────┬───────┘
+                │
+       ┌────────┴────────┐
+       │                 │
+       ▼                 ▼
+┌──────────────┐  ┌──────────────┐
+│   Message    │  │   Payment    │
+└──────────────┘  └──────────────┘
+
+         ┌──────────────┐
+         │TreatmentPlan │
+         └──────┬───────┘
+                │
+       ┌────────┴────────┐
+       │                 │
+       ▼                 ▼
+┌──────────────┐  ┌──────────────┐
+│TreatmentNote │  │  Medication  │
+└──────────────┘  └──────────────┘
+
+┌────────────────────────────────────────────────────────────────────────┐
+│  🏥 CLINIC MANAGEMENT                                                  │
+└────────────────────────────────────────────────────────────────────────┘
+
+         ┌──────────────┐
+         │    Clinic    │
+         └──────┬───────┘
+                │
+       ┌────────┴────────┬──────────┐
+       │                 │          │
+       ▼                 ▼          ▼
+┌──────────────┐  ┌──────────────┐ │
+│ClinicService │  │   Document   │ │
+└──────────────┘  └──────────────┘ │
+                                   │
+                            ┌──────▼───────┐
+                            │    Payout    │
+                            └──────────────┘
+
+┌────────────────────────────────────────────────────────────────────────┐
+│  🔐 SECURITY & COMPLIANCE                                              │
+└────────────────────────────────────────────────────────────────────────┘
+
+         ┌──────────────┐
+         │     Role     │◄─────┬─────────┐
+         └──────┬───────┘      │         │
+                │              │         │
+                ▼              │         │
+         ┌──────────────┐      │         │
+         │ Permission   │      │         │
+         └──────┬───────┘      │         │
+                │              │         │
+       ┌────────┴────────┐     │         │
+       │                 │     │         │
+       ▼                 ▼     │         │
+┌──────────────┐  ┌──────────────┐      │
+│RolePermission│  │   UserRole   │◄─────┘
+└──────────────┘  └──────────────┘
+
+         ┌──────────────┐
+         │   AuditLog   │  ← Tracks all system actions
+         └──────────────┘
+
+┌────────────────────────────────────────────────────────────────────────┐
+│  🔔 NOTIFICATIONS                                                      │
+└────────────────────────────────────────────────────────────────────────┘
+
+         ┌──────────────────┐
+         │PushSubscription  │
+         └──────────────────┘
+
+         ┌──────────────────┐
+         │  Notification    │
+         └──────────────────┘
+
+═════════════════════════════════════════════════════════════════════════════
+
+                          API ENDPOINTS OVERVIEW
+
+═════════════════════════════════════════════════════════════════════════════
+
+┌────────────────────────────────────────────────────────────────────────┐
+│  Authentication & Authorization                                        │
+└────────────────────────────────────────────────────────────────────────┘
+
+    POST   /api/auth/register       Register new user
+    POST   /api/auth/login          Login user
+    POST   /api/auth/logout         Logout user
+    GET    /api/auth/profile        Get current user profile
+    PUT    /api/auth/profile        Update user profile
+
+┌────────────────────────────────────────────────────────────────────────┐
+│  Appointments                                                          │
+└────────────────────────────────────────────────────────────────────────┘
+
+    GET    /api/appointments        List appointments
+    POST   /api/appointments        Create appointment
+    GET    /api/appointments/:id    Get appointment details
+    PUT    /api/appointments/:id    Update appointment
+    DELETE /api/appointments/:id    Cancel appointment
+
+┌────────────────────────────────────────────────────────────────────────┐
+│  Doctors                                                               │
+└────────────────────────────────────────────────────────────────────────┘
+
+    GET    /api/doctors             List all doctors
+    GET    /api/doctors/:id         Get doctor details
+    GET    /api/doctors/:id/slots   Get available time slots
+
+┌────────────────────────────────────────────────────────────────────────┐
+│  Patients                                                              │
+└────────────────────────────────────────────────────────────────────────┘
+
+    GET    /api/patients/:id        Get patient details
+    GET    /api/patients/:id/history Get medical history
+    POST   /api/patients/:id/history Add medical record
+
+┌────────────────────────────────────────────────────────────────────────┐
+│  Messages                                                              │
+└────────────────────────────────────────────────────────────────────────┘
+
+    GET    /api/messages            Get user messages
+    POST   /api/messages            Send message
+    PUT    /api/messages/:id/read   Mark as read
+
+┌────────────────────────────────────────────────────────────────────────┐
+│  Payments                                                              │
+└────────────────────────────────────────────────────────────────────────┘
+
+    POST   /api/payments/intent     Create payment intent
+    POST   /api/payments/confirm    Confirm payment
+    GET    /api/payments/:id        Get payment status
+
+┌────────────────────────────────────────────────────────────────────────┐
+│  Clinics                                                               │
+└────────────────────────────────────────────────────────────────────────┘
+
+    GET    /api/clinics             List clinics
+    POST   /api/clinics             Create clinic
+    GET    /api/clinics/:id         Get clinic details
+    GET    /api/clinics/:id/services Get clinic services
+
+═════════════════════════════════════════════════════════════════════════════
+
+                          TECHNOLOGY STACK
+
+═════════════════════════════════════════════════════════════════════════════
+
+┌────────────────────────────────────────────────────────────────────────┐
+│  Frontend Technologies                                                 │
+└────────────────────────────────────────────────────────────────────────┘
+
+    Framework:       Angular 18+
+    Language:        TypeScript
+    Styling:         SCSS, Bootstrap
+    State Mgmt:      RxJS, Services
+    HTTP Client:     Angular HttpClient
+    Real-time:       Socket.io Client
+    Forms:           Reactive Forms
+    Routing:         Angular Router
+
+┌────────────────────────────────────────────────────────────────────────┐
+│  Backend Technologies                                                  │
+└────────────────────────────────────────────────────────────────────────┘
+
+    Runtime:         Node.js
+    Framework:       Express.js
+    Language:        TypeScript
+    ORM:             Prisma
+    Authentication:  JWT, Passport.js
+    Real-time:       Socket.io
+    Validation:      express-validator
+    API Docs:        Swagger
+
+┌────────────────────────────────────────────────────────────────────────┐
+│  Database                                                              │
+└────────────────────────────────────────────────────────────────────────┘
+
+    Database:        PostgreSQL (Neon)
+    ORM:             Prisma
+    Migrations:      Prisma Migrate
+    Query Builder:   Prisma Client
+    Connection:      Connection pooling
+
+┌────────────────────────────────────────────────────────────────────────┐
+│  External Services                                                     │
+└────────────────────────────────────────────────────────────────────────┘
+
+    Payments:        Stripe
+    Image Storage:   Cloudinary
+    File Storage:    AWS S3
+    Email:           SMTP (configurable)
+
+═════════════════════════════════════════════════════════════════════════════
+
+                      SECURITY FEATURES
+
+═════════════════════════════════════════════════════════════════════════════
+
+✓ JWT Authentication
+✓ Password Hashing (bcrypt)
+✓ Role-Based Access Control (RBAC)
+✓ SSL/TLS Database Connection
+✓ CORS Configuration
+✓ Input Validation & Sanitization
+✓ SQL Injection Prevention (Prisma)
+✓ Audit Logging
+✓ Session Management
+✓ Rate Limiting (configurable)
+
+═════════════════════════════════════════════════════════════════════════════
+
+                     DEPLOYMENT ARCHITECTURE
+
+═════════════════════════════════════════════════════════════════════════════
+
+┌────────────────────────────────────────────────────────────────────────┐
+│  Development (Current Setup)                                           │
+└────────────────────────────────────────────────────────────────────────┘
+
+    Frontend:  localhost:4200 (Angular Dev Server)
+    Backend:   localhost:3000 (Express Server)
+    Database:  Neon PostgreSQL (Cloud - EU Central)
+
+┌────────────────────────────────────────────────────────────────────────┐
+│  Production (Recommended)                                              │
+└────────────────────────────────────────────────────────────────────────┘
+
+    Frontend:  Vercel / Netlify / AWS S3 + CloudFront
+    Backend:   AWS EC2 / Google Cloud Run / Railway
+    Database:  Neon PostgreSQL (Production tier)
+    CDN:       CloudFlare
+    SSL:       Let's Encrypt / CloudFlare
+
+═════════════════════════════════════════════════════════════════════════════
+
+This architecture diagram shows the complete system structure of your
+ChifaaCare healthcare platform. All components are now configured and
+ready to use!
+
+═════════════════════════════════════════════════════════════════════════════
