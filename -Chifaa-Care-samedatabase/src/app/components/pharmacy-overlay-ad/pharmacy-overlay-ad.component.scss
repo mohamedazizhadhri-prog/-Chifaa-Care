@@ -1,0 +1,228 @@
+/* Full-screen overlay */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.5s ease;
+
+  &.active {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+.ad-container {
+  background: white;
+  border-radius: 25px;
+  max-width: 800px;
+  width: 90%;
+  max-height: 90vh;
+  overflow: hidden;
+  position: relative;
+  transform: scale(0.8);
+  transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.5);
+
+  .overlay.active & {
+    transform: scale(1);
+  }
+}
+
+.close-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 50px;
+  height: 50px;
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  border-radius: 50%;
+  font-size: 28px;
+  cursor: pointer;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  line-height: 1;
+  color: #333;
+
+  &:hover {
+    background: #ff4757;
+    color: white;
+    transform: rotate(90deg);
+  }
+}
+
+.carousel-container {
+  position: relative;
+  width: 100%;
+  height: 500px;
+  overflow: hidden;
+}
+
+.carousel-slide {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 60px;
+  text-align: center;
+  color: white;
+
+  &.active {
+    opacity: 1;
+  }
+}
+
+.slide-icon {
+  font-size: 80px;
+  margin-bottom: 20px;
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+.slide-title {
+  font-size: 3em;
+  margin-bottom: 20px;
+  font-weight: bold;
+  text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.slide-text {
+  font-size: 1.4em;
+  margin-bottom: 30px;
+  line-height: 1.6;
+}
+
+.slide-offer {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 20px 40px;
+  border-radius: 50px;
+  font-size: 1.8em;
+  font-weight: bold;
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  margin-bottom: 30px;
+}
+
+.cta-button {
+  background: white;
+  color: #667eea;
+  padding: 18px 50px;
+  border: none;
+  border-radius: 50px;
+  font-size: 1.3em;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+
+  &:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+  }
+}
+
+.carousel-dots {
+  position: absolute;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 15px;
+  z-index: 5;
+}
+
+.dot {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: all 0.3s ease;
+
+  &.active {
+    background: white;
+    transform: scale(1.3);
+  }
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.8);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .carousel-container {
+    height: 400px;
+  }
+
+  .carousel-slide {
+    padding: 40px 20px;
+  }
+
+  .slide-title {
+    font-size: 2em;
+  }
+
+  .slide-text {
+    font-size: 1.1em;
+  }
+
+  .slide-offer {
+    font-size: 1.3em;
+    padding: 15px 30px;
+  }
+
+  .close-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 24px;
+    top: 15px;
+    right: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .ad-container {
+    width: 95%;
+  }
+
+  .slide-icon {
+    font-size: 60px;
+  }
+
+  .slide-title {
+    font-size: 1.6em;
+  }
+
+  .cta-button {
+    padding: 15px 35px;
+    font-size: 1.1em;
+  }
+}

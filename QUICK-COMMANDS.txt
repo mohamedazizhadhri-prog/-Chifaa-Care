@@ -1,0 +1,166 @@
+╔══════════════════════════════════════════════════════════════╗
+║        🏥 CHIFAA CARE - QUICK REFERENCE CARD 🏥             ║
+╚══════════════════════════════════════════════════════════════╝
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃  🚀 ESSENTIAL COMMANDS                                     ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+START PROJECT:
+  → Double-click: START-PROJECT-WITH-DB.bat
+
+VERIFY SETUP:
+  → Double-click: VERIFY-SETUP.bat
+
+TEST DATABASE:
+  → cd -Chifaa-Care-samedatabase\chifaacare-backend
+  → node test-neon-connection.js
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃  🌐 APPLICATION URLS                                       ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+Frontend:      http://localhost:4200
+Backend API:   http://localhost:3000
+API Docs:      http://localhost:3000/api-docs
+Prisma Studio: http://localhost:5555 (after running command)
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃  🗄️  DATABASE COMMANDS                                     ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+# Navigate to backend first:
+cd -Chifaa-Care-samedatabase\chifaacare-backend
+
+View Database:
+  npm run prisma:studio
+
+Generate Prisma Client:
+  npm run prisma:generate
+
+Apply Migrations:
+  npm run migrate:deploy
+
+Create Migration:
+  npm run migrate:dev --name migration_name
+
+Reset Database (⚠️  deletes all data):
+  npm run migrate:reset
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃  👥 CREATE TEST DATA                                       ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+# In backend directory:
+cd -Chifaa-Care-samedatabase\chifaacare-backend
+
+Create Test Accounts:
+  npm run create:accounts
+
+Seed Database:
+  npm run seed:safe
+
+Create Clinics:
+  npm run create:clinics
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃  💻 DEVELOPMENT COMMANDS                                   ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+BACKEND:
+  cd -Chifaa-Care-samedatabase\chifaacare-backend
+  
+  Start Dev Server:     npm run dev
+  Build:                npm run build
+  Start Production:     npm start
+
+FRONTEND:
+  cd -Chifaa-Care-samedatabase
+  
+  Start Dev Server:     npm start
+  Build:                npm run build
+  Run Tests:            npm test
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃  📁 IMPORTANT FILES                                        ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+Database Config:
+  → chifaacare-backend\.env
+
+Database Schema:
+  → chifaacare-backend\prisma\schema.prisma
+
+Backend Code:
+  → chifaacare-backend\src\
+
+Frontend Code:
+  → src\
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃  🆘 QUICK TROUBLESHOOTING                                  ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+Database Connection Failed:
+  1. Check internet connection
+  2. Verify DATABASE_URL in .env
+  3. Run: node test-neon-connection.js
+
+Port Already in Use:
+  1. Close apps using port 3000 or 4200
+  2. Or change PORT in backend/.env
+
+Dependencies Issues:
+  Run: VERIFY-SETUP.bat
+  It will auto-fix missing dependencies
+
+Migration Errors:
+  npm run migrate:reset  (⚠️  deletes data)
+  npm run migrate:deploy
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃  🗄️  NEON DATABASE INFO                                    ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+Database:   neondb
+Region:     EU Central (Frankfurt)
+SSL:        Enabled ✓
+Status:     Connected ✓
+
+Tables: Users, Appointments, Clinics, Payments,
+        Medical Records, Messages, Roles, and more
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃  📚 DOCUMENTATION FILES                                    ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+START-HERE-FIRST.md       Complete setup guide
+NEON-DATABASE-READY.md    Database documentation
+VISUAL-START-GUIDE.txt    This quick reference
+QUICK_REFERENCE.md        Detailed commands
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃  🎯 TYPICAL WORKFLOW                                       ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+1. Start project:
+   → START-PROJECT-WITH-DB.bat
+
+2. Wait for servers to start
+   ✓ Backend: http://localhost:3000
+   ✓ Frontend: http://localhost:4200
+
+3. Make changes to code
+   → Auto-reloads (hot reload enabled)
+
+4. View database:
+   → npm run prisma:studio
+
+5. Test API:
+   → http://localhost:3000/api-docs
+
+╔══════════════════════════════════════════════════════════════╗
+║  🎉 Ready to code! Keep this reference handy! 🎉            ║
+╚══════════════════════════════════════════════════════════════╝
+
+Last Updated: November 1, 2025
