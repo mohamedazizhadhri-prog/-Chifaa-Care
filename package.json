@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "@google-cloud/local-auth": "^3.0.1",
+    "bcryptjs": "^3.0.2",
+    "googleapis": "^130.0.0"
+  }
+}
