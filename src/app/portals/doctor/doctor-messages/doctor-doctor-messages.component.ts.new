@@ -1,0 +1,366 @@
+import { Component, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { RouterModule } from '@angular/router';
+import { AuthService } from '../../../services/auth.service';
+import { MessageService } from '../../../services/message.service';
+import { SocketService } from '../../../services/socket.service';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
+
+@Component({
+  selector: 'app-doctor-doctor-messages',
+  standalone: true,
+  imports: [CommonModule, FormsModule, RouterModule],
+  template: `
+    <div class="messages-container">
+      <div class="messages-layout">
+        <!-- Chat List Sidebar -->
+        <aside class="chat-sidebar card">
+          <div class="sidebar-header">
+            <div class="card-header">
+              <span>Doctor Messages</span>
+              <div class="unread-count" *ngIf="getUnreadCount() > 0">
+                {{ getUnreadCount() }}
+              </div>
+            </div>
+          </div>
+          
+          <div class="sidebar-actions">
+            <button class="btn btn-outline" (click)="toggleDoctorPicker()">
+              <i class="fa-solid fa-user-doctor"></i> New chat
+            </button>
+          </div>
+
+          <div *ngIf="showDoctorPicker" class="doctor-picker card">
+            <div class="picker-header">Start a new chat with a doctor</div>
+            <div *ngIf="otherDoctors.length === 0" class="no-doctors">
+              No other doctors available.
+            </div>
+            <div 
+              *ngFor="let doctor of otherDoctors" 
+              class="doctor-item"
+              (click)="startChatWithDoctor(doctor)">
+              <div class="chat-avatar">
+                <i class="fa-solid fa-user-doctor"></i>
+              </div>
+              <div class="doctor-info">
+                {{ doctor.firstName }} {{ doctor.lastName }}
+              </div>
+            </div>
+          </div>
+
+          <div class="chat-search">
+            <input 
+              type="text" 
+              placeholder="Search doctors..." 
+              [(ngModel)]="searchQuery" 
+              (input)="filterChats()">
+            <i class="fa-solid fa-search"></i>
+          </div>
+
+          <div class="chat-list">
+            <div 
+              *ngFor="let chat of filteredChats"
+              class="chat-item"
+              [class.active]="selectedChatId === chat.id"
+              [class.unread]="chat.unreadCount > 0"
+              (click)="selectChat(chat.id)">
+              <div class="chat-avatar">
+                <i class="fa-solid fa-user-doctor"></i>
+              </div>
+              <div class="chat-info">
+                <div class="chat-name">{{ chat.doctorName || 'Doctor' }}</div>
+                <div class="chat-preview">{{ chat.lastMessage || 'No messages yet' }}</div>
+              </div>
+              <div class="chat-status">
+                <span class="chat-time">{{ chat.lastMessageTime | date:'shortTime' }}</span>
+                <span *ngIf="chat.unreadCount > 0" class="unread-badge">
+                  {{ chat.unreadCount }}
+                </span>
+                <i 
+                  class="fa-solid fa-circle status-indicator" 
+                  [class.online]="chat.isOnline"
+                  [class.offline]="!chat.isOnline">
+                </i>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <!-- Chat Area -->
+        <div class="chat-area" *ngIf="selectedChat">
+          <div class="chat-header">
+            <div class="chat-doctor-info">
+              <div class="doctor-avatar">
+                <i class="fa-solid fa-user-doctor"></i>
+              </div>
+              <div class="doctor-details">
+                <strong>{{ selectedChat.doctorName || 'Doctor' }}</strong>
+                <span class="doctor-status" [class.online]="selectedChat.isOnline">
+                  <i class="fa-solid fa-circle"></i>
+                  {{ selectedChat.isOnline ? 'Online' : 'Offline' }}
+                </span>
+                <span *ngIf="dialing" class="call-status">Ringing...</span>
+              </div>
+            </div>
+            <div class="chat-actions">
+              <div class="dropdown">
+                <button class="btn btn-outline" (click)="toggleCallMenu()">
+                  <i class="fa-solid fa-phone"></i> Request Call
+                </button>
+                <div *ngIf="showCallMenu" class="dropdown-menu">
+                  <button class="dropdown-item" (click)="startCall('audio')">
+                    <i class="fa-solid fa-microphone"></i> Voice only
+                  </button>
+                  <button class="dropdown-item" (click)="startCall('video')">
+                    <i class="fa-solid fa-video"></i> Video + Voice
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div #messagesContainer class="chat-messages">
+            <div 
+              *ngFor="let msg of currentMessages" 
+              class="message" 
+              [class.sent]="msg.senderId === currentUser?.id" 
+              [class.received]="msg.senderId !== currentUser?.id">
+              <div class="message-content">{{ msg.content }}</div>
+              <div class="message-time">
+                {{ msg.timestamp | date:'shortTime' }}
+                <i *ngIf="msg.senderId === currentUser?.id" class="message-status" [class.read]="msg.isRead">
+                  {{ msg.isRead ? '✓✓' : '✓' }}
+                </i>
+              </div>
+            </div>
+          </div>
+          
+          <div class="message-input-container">
+            <form (submit)="sendMessage($event)" class="message-form">
+              <div class="message-input-wrapper">
+                <textarea 
+                  #messageInput
+                  class="message-input" 
+                  [(ngModel)]="newMessage" 
+                  name="message" 
+                  placeholder="Type a message..."
+                  (keydown.enter)="onMessageKeydown($event)"
+                  rows="1">
+                </textarea>
+                <div class="message-actions">
+                  <button type="button" class="btn-icon" (click)="attachFile()">
+                    <i class="fa-solid fa-paperclip"></i>
+                  </button>
+                </div>
+              </div>
+              <button type="submit" class="send-button" [disabled]="!newMessage.trim()">
+                <i class="fa-solid fa-paper-plane"></i>
+              </button>
+            </form>
+          </div>
+        </div>
+        
+        <!-- No chat selected -->
+        <div *ngIf="!selectedChat" class="no-chat-selected">
+          <div class="no-chat-content">
+            <i class="fa-solid fa-comments no-chat-icon"></i>
+            <h3>No conversation selected</h3>
+            <p>Select a chat or start a new conversation with a doctor</p>
+            <button class="btn btn-primary" (click)="toggleDoctorPicker()">
+              <i class="fa-solid fa-plus"></i> New Chat
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `,
+  styles: [`
+    /* Add your styles here */
+    .messages-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      background-color: #f8fafc;
+    }
+    
+    .messages-layout {
+      display: flex;
+      height: 100%;
+      max-width: 1400px;
+      margin: 0 auto;
+      width: 100%;
+    }
+    
+    .chat-sidebar {
+      width: 350px;
+      border-right: 1px solid #e2e8f0;
+      display: flex;
+      flex-direction: column;
+      background: white;
+    }
+    
+    .chat-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: #f8fafc;
+    }
+    
+    /* Add more styles as needed */
+  `]
+})
+export class DoctorDoctorMessagesComponent implements OnInit, OnDestroy {
+  @ViewChild('messagesContainer') private messagesContainer!: ElementRef;
+  
+  private destroy$ = new Subject<void>();
+  
+  // Component state
+  currentUser: any;
+  conversations: any[] = [];
+  filteredChats: any[] = [];
+  selectedChatId: string | null = null;
+  selectedChat: any = null;
+  currentMessages: any[] = [];
+  newMessage = '';
+  searchQuery = '';
+  showDoctorPicker = false;
+  doctors: any[] = [];
+  otherDoctors: any[] = [];
+  showCallMenu = false;
+  dialing = false;
+
+  constructor(
+    private authService: AuthService,
+    private messageService: MessageService,
+    private socketService: SocketService
+  ) {}
+
+  ngOnInit(): void {
+    this.currentUser = this.authService.currentUserValue;
+    this.initializeComponent();
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private initializeComponent(): void {
+    // Load initial data
+    this.loadConversations();
+    this.loadDoctors();
+    this.setupSocketListeners();
+  }
+
+  private loadConversations(): void {
+    // Implementation for loading conversations
+    this.conversations = [];
+    this.filteredChats = [...this.conversations];
+  }
+
+  private loadDoctors(): void {
+    // Implementation for loading doctors
+    this.doctors = [];
+    this.otherDoctors = this.doctors.filter(d => d.id !== this.currentUser?.id);
+  }
+
+  private setupSocketListeners(): void {
+    // Setup socket listeners
+    this.socketService.on('new-message', (message: any) => {
+      this.handleNewMessage(message);
+    });
+  }
+
+  // Add other component methods here...
+  getUnreadCount(): number {
+    return this.conversations.reduce((count, chat) => count + (chat.unreadCount || 0), 0);
+  }
+
+  toggleDoctorPicker(): void {
+    this.showDoctorPicker = !this.showDoctorPicker;
+  }
+
+  filterChats(): void {
+    if (!this.searchQuery.trim()) {
+      this.filteredChats = [...this.conversations];
+      return;
+    }
+    
+    const query = this.searchQuery.toLowerCase();
+    this.filteredChats = this.conversations.filter(chat => 
+      (chat.doctorName || '').toLowerCase().includes(query) ||
+      (chat.lastMessage || '').toLowerCase().includes(query)
+    );
+  }
+
+  selectChat(chatId: string): void {
+    this.selectedChatId = chatId;
+    this.selectedChat = this.conversations.find(c => c.id === chatId);
+    if (this.selectedChat) {
+      this.loadMessages(chatId);
+      this.markAsRead(chatId);
+    }
+  }
+
+  private loadMessages(chatId: string): void {
+    // Implementation for loading messages
+    this.currentMessages = [];
+  }
+
+  private markAsRead(chatId: string): void {
+    // Implementation for marking messages as read
+  }
+
+  startChatWithDoctor(doctor: any): void {
+    // Implementation for starting a new chat
+  }
+
+  sendMessage(event: Event): void {
+    event.preventDefault();
+    if (!this.newMessage.trim() || !this.selectedChatId) return;
+    
+    // Implementation for sending message
+    this.newMessage = '';
+    this.scrollToBottom();
+  }
+
+  onMessageKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      this.sendMessage(event);
+    }
+  }
+
+  toggleCallMenu(): void {
+    this.showCallMenu = !this.showCallMenu;
+  }
+
+  startCall(type: 'audio' | 'video'): void {
+    this.showCallMenu = false;
+    this.dialing = true;
+    // Implementation for starting a call
+  }
+
+  attachFile(): void {
+    // Implementation for file attachment
+  }
+
+  private handleNewMessage(message: any): void {
+    // Implementation for handling new messages
+  }
+
+  private scrollToBottom(): void {
+    try {
+      if (this.messagesContainer) {
+        setTimeout(() => {
+          this.messagesContainer.nativeElement.scrollTop = 
+            this.messagesContainer.nativeElement.scrollHeight;
+        }, 0);
+      }
+    } catch (err) {
+      console.error('Error scrolling to bottom:', err);
+    }
+  }
+}
