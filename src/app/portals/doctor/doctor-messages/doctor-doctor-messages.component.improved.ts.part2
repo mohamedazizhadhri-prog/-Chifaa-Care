@@ -1,0 +1,9 @@
+  declineIncoming(): void {
+    if (!this.currentUser?.id || !this.incomingFromUserId) return;
+    this.socketService.emit('call:decline', { 
+      fromUserId: this.currentUser.id, 
+      toUserId: this.incomingFromUserId 
+    });
+    this.cleanupCall();
+  }
+}
