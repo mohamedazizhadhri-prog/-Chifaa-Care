@@ -1,0 +1,269 @@
+<div class="doctor-messages-container">
+  <!-- Header -->
+  <div class="messages-header">
+    <h1>Messages</h1>
+    <div class="header-tabs">
+      <button 
+        class="tab-btn" 
+        [class.active]="activeTab === 'patients'"
+        (click)="switchTab('patients')">
+        <i class="fas fa-user-injured"></i>
+        Patients
+        <span class="badge" *ngIf="getPatientUnreadCount() > 0">
+          {{ getPatientUnreadCount() }}
+        </span>
+      </button>
+      <button 
+        class="tab-btn" 
+        [class.active]="activeTab === 'doctors'"
+        (click)="switchTab('doctors')">
+        <i class="fas fa-user-md"></i>
+        Doctors
+        <span class="badge" *ngIf="getDoctorUnreadCount() > 0">
+          {{ getDoctorUnreadCount() }}
+        </span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="messages-content">
+    <!-- Conversations List -->
+    <div class="conversations-sidebar">
+      <div class="conversations-list">
+        <!-- Loading -->
+        <div *ngIf="isLoadingConversations" class="loading-state">
+          <i class="fas fa-spinner fa-spin"></i>
+          Loading conversations...
+        </div>
+
+        <!-- Empty State -->
+        <div *ngIf="!isLoadingConversations && displayedConversations.length === 0" class="empty-state">
+          <i class="fas fa-comments"></i>
+          <p>No {{ activeTab === 'patients' ? 'patient' : 'doctor' }} conversations yet</p>
+        </div>
+
+        <!-- Conversations -->
+        <div 
+          *ngFor="let conversation of displayedConversations"
+          class="conversation-item"
+          [class.active]="selectedConversation?.id === conversation.id"
+          [class.unread]="conversation.unreadCount > 0"
+          (click)="selectConversation(conversation)">
+          
+          <div class="conversation-avatar">
+            <img [src]="getOtherParticipant(conversation)?.avatar || 'assets/avatars/default.png'" 
+                 [alt]="getOtherParticipant(conversation)?.name">
+            <span 
+              class="online-indicator" 
+              *ngIf="isUserOnline(getOtherParticipant(conversation)?.id)">
+            </span>
+          </div>
+
+          <div class="conversation-info">
+            <div class="conversation-header">
+              <h3>{{ getOtherParticipant(conversation)?.name }}</h3>
+              <span class="conversation-time" *ngIf="conversation.lastMessage">
+                {{ formatTime(conversation.lastMessage.timestamp) }}
+              </span>
+            </div>
+            <div class="conversation-preview">
+              <p [class.unread-text]="conversation.unreadCount > 0">
+                {{ conversation.lastMessage?.content || 'No messages yet' }}
+              </p>
+              <span class="unread-badge" *ngIf="conversation.unreadCount > 0">
+                {{ conversation.unreadCount }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat Area -->
+    <div class="chat-area" *ngIf="selectedConversation; else noConversationSelected">
+      <!-- Chat Header -->
+      <div class="chat-header">
+        <div class="chat-user-info">
+          <div class="chat-avatar">
+            <img [src]="getOtherParticipant(selectedConversation)?.avatar || 'assets/avatars/default.png'" 
+                 [alt]="getOtherParticipant(selectedConversation)?.name">
+            <span 
+              class="online-indicator" 
+              *ngIf="isUserOnline(getOtherParticipant(selectedConversation)?.id)">
+            </span>
+          </div>
+          <div>
+            <h3>{{ getOtherParticipant(selectedConversation)?.name }}</h3>
+            <span class="user-status">
+              <span *ngIf="isUserOnline(getOtherParticipant(selectedConversation)?.id)" class="status-online">
+                <i class="fas fa-circle"></i> Online
+              </span>
+              <span *ngIf="!isUserOnline(getOtherParticipant(selectedConversation)?.id)" class="status-offline">
+                <i class="fas fa-circle"></i> Offline
+              </span>
+            </span>
+          </div>
+        </div>
+
+        <div class="chat-actions">
+          <button class="action-btn" (click)="startVoiceCall()" title="Voice Call">
+            <i class="fas fa-phone"></i>
+          </button>
+          <button class="action-btn" (click)="startVideoCall()" title="Video Call">
+            <i class="fas fa-video"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Messages Container -->
+      <div class="messages-container" #messagesContainer>
+        <!-- Loading Messages -->
+        <div *ngIf="isLoadingMessages" class="loading-messages">
+          <i class="fas fa-spinner fa-spin"></i>
+          Loading messages...
+        </div>
+
+        <!-- Messages -->
+        <div *ngFor="let message of messages" 
+             class="message"
+             [class.sent]="message.senderId === authService.getCurrentUser()?.id"
+             [class.received]="message.senderId !== authService.getCurrentUser()?.id">
+          
+          <div class="message-avatar" *ngIf="message.senderId !== authService.getCurrentUser()?.id">
+            <img [src]="getOtherParticipant(selectedConversation)?.avatar || 'assets/avatars/default.png'" 
+                 [alt]="message.senderName">
+          </div>
+
+          <div class="message-content">
+            <div class="message-bubble">
+              <p>{{ message.content }}</p>
+            </div>
+            <div class="message-meta">
+              <span class="message-time">{{ formatTime(message.timestamp) }}</span>
+              <i class="fas fa-check" *ngIf="message.read && message.senderId === authService.getCurrentUser()?.id"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- Typing Indicator -->
+        <div class="typing-indicator" *ngIf="typingUsers.size > 0">
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+          <span>{{ getOtherParticipant(selectedConversation)?.name }} is typing...</span>
+        </div>
+      </div>
+
+      <!-- Message Input -->
+      <div class="message-input-container">
+        <div class="message-input">
+          <button class="attach-btn" title="Attach file">
+            <i class="fas fa-paperclip"></i>
+          </button>
+          
+          <input 
+            #messageInput
+            type="text" 
+            [(ngModel)]="newMessage"
+            (input)="onTyping()"
+            (keyup.enter)="sendMessage()"
+            placeholder="Type a message..."
+            [disabled]="isSendingMessage">
+          
+          <button 
+            class="send-btn" 
+            (click)="sendMessage()"
+            [disabled]="!newMessage.trim() || isSendingMessage">
+            <i class="fas" [class.fa-spinner]="isSendingMessage" [class.fa-spin]="isSendingMessage" [class.fa-paper-plane]="!isSendingMessage"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- No Conversation Selected -->
+    <ng-template #noConversationSelected>
+      <div class="no-conversation">
+        <i class="fas fa-comments"></i>
+        <h3>Select a conversation</h3>
+        <p>Choose a conversation from the sidebar to start messaging</p>
+      </div>
+    </ng-template>
+  </div>
+
+  <!-- Call Modal -->
+  <div class="call-modal" *ngIf="showCallModal && callState" [class.show]="showCallModal">
+    <div class="call-modal-content">
+      <!-- Incoming Call -->
+      <div class="incoming-call" *ngIf="callState.isIncoming && !callState.isActive">
+        <div class="call-avatar">
+          <img src="assets/avatars/default.png" [alt]="callState.peerName">
+        </div>
+        <h2>{{ callState.peerName }}</h2>
+        <p>Incoming {{ callState.callType }} call...</p>
+        
+        <div class="call-actions">
+          <button class="call-btn reject" (click)="rejectCall()">
+            <i class="fas fa-phone-slash"></i>
+            Reject
+          </button>
+          <button class="call-btn answer" (click)="answerCall()">
+            <i class="fas fa-phone"></i>
+            Answer
+          </button>
+        </div>
+      </div>
+
+      <!-- Active Call -->
+      <div class="active-call" *ngIf="callState.isActive">
+        <!-- Video Streams -->
+        <div class="video-container" *ngIf="callState.callType === 'video'">
+          <video #remoteVideo autoplay playsinline class="remote-video"></video>
+          <video #localVideo autoplay playsinline muted class="local-video"></video>
+        </div>
+
+        <!-- Voice Call Display -->
+        <div class="voice-call-display" *ngIf="callState.callType === 'voice'">
+          <div class="call-avatar-large">
+            <img src="assets/avatars/default.png" [alt]="callState.peerName">
+          </div>
+          <h2>{{ callState.peerName }}</h2>
+          <p class="call-status">Connected</p>
+        </div>
+
+        <!-- Call Controls -->
+        <div class="call-controls">
+          <button class="control-btn" (click)="toggleMute()" [class.active]="isMuted">
+            <i class="fas" [class.fa-microphone]="!isMuted" [class.fa-microphone-slash]="isMuted"></i>
+          </button>
+          
+          <button class="control-btn" (click)="toggleVideo()" *ngIf="callState.callType === 'video'" [class.active]="isVideoOff">
+            <i class="fas" [class.fa-video]="!isVideoOff" [class.fa-video-slash]="isVideoOff"></i>
+          </button>
+          
+          <button class="control-btn" (click)="switchCamera()" *ngIf="callState.callType === 'video'">
+            <i class="fas fa-sync-alt"></i>
+          </button>
+          
+          <button class="control-btn end-call" (click)="endCall()">
+            <i class="fas fa-phone-slash"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Outgoing Call -->
+      <div class="outgoing-call" *ngIf="!callState.isIncoming && !callState.isActive">
+        <div class="call-avatar">
+          <img src="assets/avatars/default.png" [alt]="callState.peerName">
+        </div>
+        <h2>{{ callState.peerName }}</h2>
+        <p>Calling...</p>
+        
+        <button class="call-btn reject" (click)="endCall()">
+          <i class="fas fa-phone-slash"></i>
+          Cancel
+          </button>
+      </div>
+    </div>
+  </div>
+</div>

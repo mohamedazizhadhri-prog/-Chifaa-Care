@@ -1,0 +1,31 @@
+<div class="overlay" [class.active]="isVisible" (click)="onOverlayClick($event)">
+  <div class="ad-container">
+    <button class="close-btn" (click)="hideOverlay()">×</button>
+    
+    <div class="carousel-container">
+      <div 
+        *ngFor="let slide of slides; let i = index"
+        class="carousel-slide"
+        [class.active]="i === currentSlideIndex"
+        [style.background]="slide.gradient"
+      >
+        <div class="slide-icon">{{ slide.icon }}</div>
+        <h2 class="slide-title">{{ slide.title }}</h2>
+        <p class="slide-text">{{ slide.text }}</p>
+        <div class="slide-offer">{{ slide.offer }}</div>
+        <button class="cta-button" (click)="onCtaClick(slide)">
+          {{ slide.buttonText }}
+        </button>
+      </div>
+    </div>
+
+    <div class="carousel-dots">
+      <span 
+        *ngFor="let slide of slides; let i = index"
+        class="dot"
+        [class.active]="i === currentSlideIndex"
+        (click)="goToSlide(i)"
+      ></span>
+    </div>
+  </div>
+</div>
