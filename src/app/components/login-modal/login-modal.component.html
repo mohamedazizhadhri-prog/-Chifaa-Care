@@ -1,0 +1,413 @@
+<div class="modal-overlay" [class.active]="isOpen" (click)="!showBadge && onCloseModal()">
+  <div class="modal-content" [ngClass]="authMode" [class.fade-out]="showBadge" (click)="$event.stopPropagation()">
+    <!-- Close Button -->
+    <button class="modal-close" (click)="onCloseModal()">
+      <i class="fas fa-times"></i>
+    </button>
+
+    <!-- Small themed visual -->
+    <div class="modal-visual" aria-hidden="true">
+      <svg *ngIf="authMode === 'login'" class="visual-login" viewBox="0 0 200 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path class="ecg" d="M0 20 H40 L50 30 L60 10 L70 28 L85 20 H115 L125 30 L135 12 L145 28 L160 20 H200" stroke="url(#grad)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <defs>
+          <linearGradient id="grad" x1="0" y1="0" x2="200" y2="0" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#2563eb"/>
+            <stop offset="1" stop-color="#10b981"/>
+          </linearGradient>
+        </defs>
+      </svg>
+
+      <div *ngIf="authMode === 'signup'" class="visual-signup">
+        <span class="medical-cross" aria-hidden="true"></span>
+      </div>
+    </div>
+
+    <!-- Modal Header -->
+    <div class="modal-header">
+      <h2>{{ authMode === 'login' ? 'Welcome Back' : 'Create an Account' }}</h2>
+      <p>{{ authMode === 'login' ? 'Sign in to your ChifaaCare account' : 'Join our community of patients and doctors' }}</p>
+    </div>
+    <div class="modal-body">
+      <!-- Tabs for Login/Signup -->
+      <div class="auth-tabs">
+        <button 
+          class="tab-btn" 
+          [class.active]="authMode === 'login'"
+          (click)="switchMode('login')">
+          Login
+        </button>
+        <button 
+          class="tab-btn" 
+          [class.active]="authMode === 'signup'"
+          (click)="switchMode('signup')">
+          Sign Up
+        </button>
+      </div>
+
+      <!-- Role Selection -->
+      <div class="role-tabs" *ngIf="authMode === 'signup'">
+        <button 
+          class="tab-btn" 
+          [class.active]="selectedRole === 'patient'"
+          (click)="selectRole('patient')">
+          <i class="fas fa-user"></i>
+          Patient
+        </button>
+        <button 
+          class="tab-btn" 
+          [class.active]="selectedRole === 'doctor'"
+          (click)="selectRole('doctor')">
+          <i class="fas fa-user-md"></i>
+          Doctor
+        </button>
+      </div>
+
+      <!-- Login Form -->
+      <form class="auth-form" *ngIf="authMode === 'login'" (ngSubmit)="onSubmit(loginForm, undefined)" #loginForm="ngForm">
+        <div class="form-group">
+          <label for="login-email">Email</label>
+          <input 
+            type="email" 
+            id="login-email" 
+            name="email"
+            [(ngModel)]="loginData.email"
+            required
+            email
+            placeholder="Enter your email">
+        </div>
+
+        <div class="form-group">
+          <label for="login-password">Password</label>
+          <input 
+            type="password" 
+            id="login-password" 
+            name="password"
+            [(ngModel)]="loginData.password"
+            required
+            minlength="6"
+            placeholder="Enter your password">
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="submit-btn" [disabled]="!loginForm.form.valid || isLoading" [class.morph]="showBadge">
+            <i class="fas fa-sign-in-alt"></i>
+            {{ isLoading ? 'Signing in...' : 'Sign In' }}
+          </button>
+        </div>
+      </form>
+
+      <!-- Signup Form -->
+      <form class="auth-form signup-form" *ngIf="authMode === 'signup'" (ngSubmit)="onSubmit(undefined, signupForm)" #signupForm="ngForm">
+        <!-- Progress Steps -->
+        <div class="form-progress">
+          <div class="progress-steps">
+            <div class="step" [class.active]="currentStep === 1" [class.completed]="currentStep > 1">
+              <div class="step-number">1</div>
+              <div class="step-label">Account</div>
+            </div>
+            <div class="step-connector"></div>
+            <div class="step" [class.active]="currentStep === 2" [class.completed]="currentStep > 2">
+              <div class="step-number">2</div>
+              <div class="step-label">{{ selectedRole === 'patient' ? 'Health' : 'Professional' }} Info</div>
+            </div>
+          </div>
+        </div>
+        <!-- Step 1: Account Information -->
+        <div class="form-step" [hidden]="currentStep !== 1">
+          <h3 class="step-title">Account Information</h3>
+          <p class="step-description">Create your account to get started with Chifaa Care</p>
+          
+          <div class="form-row">
+          <div class="form-group">
+            <label for="first-name">First Name</label>
+            <input 
+              type="text" 
+              id="first-name" 
+              name="firstName"
+              [(ngModel)]="signupData.firstName"
+              required
+              placeholder="First name">
+          </div>
+          <div class="form-group">
+            <label for="last-name">Last Name</label>
+            <input 
+              type="text" 
+              id="last-name" 
+              name="lastName"
+              [(ngModel)]="signupData.lastName"
+              required
+              placeholder="Last name">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="signup-email">Email</label>
+            <input 
+              type="email" 
+              id="signup-email" 
+              name="email"
+              [(ngModel)]="signupData.email"
+              required
+              email
+              placeholder="your.email@example.com">
+          </div>
+          <div class="form-group">
+            <label for="phone">Phone</label>
+            <input 
+              type="tel" 
+              id="phone" 
+              name="phone"
+              [(ngModel)]="signupData.phone"
+              required
+              placeholder="+1234567890">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="date-of-birth">Date of Birth</label>
+            <input 
+              type="date" 
+              id="date-of-birth" 
+              name="dateOfBirth"
+              [(ngModel)]="signupData.dateOfBirth"
+              required>
+          </div>
+          <div class="form-group">
+            <label for="gender">Gender</label>
+            <select 
+              id="gender" 
+              name="gender"
+              [(ngModel)]="signupData.gender"
+              class="form-control"
+              required>
+              <option value="" disabled selected>Select gender</option>
+              <option value="MALE">Male</option>
+              <option value="FEMALE">Female</option>
+              <option value="OTHER">Other</option>
+              <option value="PREFER_NOT_TO_SAY">Prefer not to say</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="signup-password">Password</label>
+            <input 
+              type="password" 
+              id="signup-password" 
+              name="password"
+              [(ngModel)]="signupData.password"
+              required
+              minlength="8"
+              placeholder="At least 8 characters">
+          </div>
+          <div class="form-group">
+            <label for="confirm-password">Confirm Password</label>
+            <input 
+              type="password" 
+              id="confirm-password" 
+              name="confirmPassword"
+              [(ngModel)]="signupData.confirmPassword"
+              required
+              [appMatchPassword]="signupData.password"
+              placeholder="Confirm your password">
+          </div>
+        </div>
+
+        </div>
+        
+        <!-- Navigation Buttons for Step 1 -->
+        <div class="form-navigation" *ngIf="currentStep === 1">
+          <div class="navigation-buttons">
+            <div class="step-indicator">
+              <span class="current-step">{{ currentStep }}</span> of <span class="total-steps">2</span>
+            </div>
+            <button type="button" class="btn btn-primary" (click)="nextStep()" [disabled]="!isStep1Valid()">
+              Continue <i class="fas fa-arrow-right"></i>
+            </button>
+          </div>
+        </div>
+        
+        <!-- Step 2: Additional Information -->
+        <div class="form-step" [hidden]="currentStep !== 2">
+          <h3 class="step-title">{{ selectedRole === 'patient' ? 'Health Information' : 'Professional Information' }}</h3>
+          <p class="step-description">Help us personalize your experience</p>
+          
+          <!-- Patient Specific Fields -->
+          <ng-container *ngIf="selectedRole === 'patient'">
+            <div class="section-divider">
+              <span>Health Information</span>
+            </div>
+            
+            <div class="form-row">
+              <div class="form-group">
+                <label for="blood-type">Blood Type</label>
+                <select 
+                  id="blood-type" 
+                  name="bloodType"
+                  [(ngModel)]="signupData.bloodType"
+                  class="form-control">
+                  <option value="" disabled selected>Select blood type</option>
+                  <option *ngFor="let type of ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']" 
+                          [value]="type">{{type}}</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="weight">Weight (kg)</label>
+                <input 
+                  type="number" 
+                  id="weight" 
+                  name="weight"
+                  [(ngModel)]="signupData.weight"
+                  min="0"
+                  step="0.1"
+                  placeholder="e.g. 70">
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label for="height">Height (cm)</label>
+              <input 
+                type="number" 
+                id="height" 
+                name="height"
+                [(ngModel)]="signupData.height"
+                min="0"
+                step="0.1"
+                placeholder="e.g. 175">
+            </div>
+          </ng-container>
+          
+          <!-- Doctor Specific Fields -->
+          <ng-container *ngIf="selectedRole === 'doctor'">
+            <div class="section-divider">
+              <span>Professional Information</span>
+            </div>
+            
+            <div class="form-row">
+              <div class="form-group">
+                <label for="specialization">Specialization</label>
+                <select 
+                  id="specialization" 
+                  name="specialization"
+                  [(ngModel)]="signupData.specialization"
+                  class="form-control"
+                  required>
+                  <option value="" disabled selected>Select your specialization</option>
+                  <option *ngFor="let spec of doctorSpecialties" [value]="spec">{{spec}}</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="license-number">License Number</label>
+                <input 
+                  type="text" 
+                  id="license-number" 
+                  name="licenseNumber"
+                  [(ngModel)]="signupData.licenseNumber"
+                  required
+                  placeholder="e.g. MED123456">
+              </div>
+            </div>
+            
+            <div class="form-row">
+              <div class="form-group">
+                <label for="experience">Years of Experience</label>
+                <input 
+                  type="number" 
+                  id="experience" 
+                  name="experience"
+                  [(ngModel)]="signupData.experience"
+                  required
+                  min="0"
+                  placeholder="e.g. 5">
+              </div>
+              <div class="form-group">
+                <label for="consultation-fee">Consultation Fee (USD)</label>
+                <div class="input-with-icon">
+                  <span class="currency-symbol">$</span>
+                  <input 
+                    type="number" 
+                    id="consultation-fee" 
+                    name="consultationFee"
+                    [(ngModel)]="signupData.consultationFee"
+                    required
+                    min="0"
+                    step="0.01"
+                    placeholder="e.g. 100">
+                </div>
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label for="bio">Professional Bio</label>
+              <textarea 
+                id="bio" 
+                name="bio"
+                [(ngModel)]="signupData.bio"
+                rows="3"
+                placeholder="Tell us about your professional background and experience..."></textarea>
+            </div>
+          </ng-container>
+          
+          <!-- Terms and Conditions -->
+          <div class="form-group terms-group">
+            <input 
+              type="checkbox" 
+              id="terms" 
+              name="terms"
+              [(ngModel)]="signupData.terms"
+              required>
+            <label for="terms">
+              I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>
+            </label>
+          </div>
+          
+          <!-- Navigation Buttons for Step 2 -->
+          <div class="form-navigation">
+            <div class="navigation-buttons">
+              <button type="button" class="btn btn-outline" (click)="previousStep()">
+                <i class="fas fa-arrow-left"></i> Back
+              </button>
+              <div class="step-indicator">
+                <span class="current-step">{{ currentStep }}</span> of <span class="total-steps">2</span>
+              </div>
+              <button type="submit" class="btn btn-primary" [disabled]="!isStep2Valid() || !signupData.terms || isLoading">
+                <span *ngIf="!isLoading">Create Account</span>
+                <span *ngIf="isLoading"><i class="fas fa-spinner fa-spin"></i> Creating Account...</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </form>
+
+      <!-- Error Message -->
+      <div class="error-message" *ngIf="errorMessage">
+        <i class="fas fa-exclamation-circle"></i>
+        {{ errorMessage }}
+      </div>
+    </div>
+  </div>
+
+  <!-- Global centered badge overlay (above everything inside the modal) -->
+  <div class="badge-portal" *ngIf="showBadge">
+    <div class="badge-portal__backdrop"></div>
+    <div class="badge-portal__center">
+      <div class="id-badge" [class.patient]="badgeRole==='patient'" [class.doctor]="badgeRole==='doctor'" [class.slideUp]="badgeSlideUp">
+        <div class="scanner" [class.scan]="scannerRunning"></div>
+        <div class="avatar"></div>
+        <div class="badge-info">
+          <div class="name">{{ displayName }}</div>
+          <div class="role" [class.role-patient]="badgeRole==='patient'" [class.role-doctor]="badgeRole==='doctor'">{{ badgeRole | titlecase }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Success Message -->
+  <div class="success-message" *ngIf="showSuccess">
+    <i class="fas fa-check-circle"></i>
+    <h3>{{ successMessage }}</h3>
+  </div>
+</div>

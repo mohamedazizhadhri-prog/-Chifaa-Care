@@ -1,0 +1,126 @@
+<div class="cleanup-admin">
+  <div class="header">
+    <h2><i class="fa-solid fa-broom"></i> Message Cleanup System</h2>
+    <button 
+      class="btn btn-refresh" 
+      (click)="loadData()"
+      [disabled]="loading">
+      <i class="fa-solid fa-arrows-rotate" [class.fa-spin]="loading"></i>
+      Refresh
+    </button>
+  </div>
+
+  <!-- Scheduler Status Card -->
+  <div class="card status-card">
+    <div class="card-header">
+      <h3><i class="fa-solid fa-clock"></i> Scheduler Status</h3>
+      <span 
+        class="status-badge" 
+        [class.running]="schedulerStatus?.isRunning"
+        [class.stopped]="!schedulerStatus?.isRunning">
+        {{ schedulerStatus?.isRunning ? 'Running' : 'Stopped' }}
+      </span>
+    </div>
+    <div class="card-body" *ngIf="schedulerStatus">
+      <div class="status-grid">
+        <div class="status-item">
+          <label>Last Cleanup:</label>
+          <span>{{ (schedulerStatus.lastCleanupTime | date:'medium') || 'Never' }}</span>
+        </div>
+        <div class="status-item">
+          <label>Next Cleanup:</label>
+          <span>{{ (schedulerStatus.nextCleanupTime | date:'medium') || 'N/A' }}</span>
+        </div>
+        <div class="status-item">
+          <label>Cleanup In Progress:</label>
+          <span [class.in-progress]="schedulerStatus.isCleanupInProgress">
+            {{ schedulerStatus.isCleanupInProgress ? 'Yes' : 'No' }}
+          </span>
+        </div>
+      </div>
+    </div>
+    <div class="card-footer">
+      <button 
+        class="btn btn-primary"
+        (click)="startScheduler()"
+        [disabled]="schedulerStatus?.isRunning || loading">
+        <i class="fa-solid fa-play"></i> Start Scheduler
+      </button>
+      <button 
+        class="btn btn-danger"
+        (click)="stopScheduler()"
+        [disabled]="!schedulerStatus?.isRunning || loading">
+        <i class="fa-solid fa-stop"></i> Stop Scheduler
+      </button>
+    </div>
+  </div>
+
+  <!-- Statistics Card -->
+  <div class="card stats-card">
+    <div class="card-header">
+      <h3><i class="fa-solid fa-chart-bar"></i> Cleanup Statistics</h3>
+    </div>
+    <div class="card-body" *ngIf="stats">
+      <div class="stats-grid">
+        <div class="stat-item">
+          <div class="stat-value">{{ stats.inactiveUsers }}</div>
+          <div class="stat-label">Inactive Users</div>
+        </div>
+        <div class="stat-item warning">
+          <div class="stat-value">{{ stats.totalAffectedMessages }}</div>
+          <div class="stat-label">Total Messages to Clean</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">{{ stats.messagesFromInactive }}</div>
+          <div class="stat-label">Messages From Inactive</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">{{ stats.messagesToInactive }}</div>
+          <div class="stat-label">Messages To Inactive</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">{{ stats.affectedConversations }}</div>
+          <div class="stat-label">Affected Conversations</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-footer">
+      <button 
+        class="btn btn-warning"
+        (click)="triggerCleanup()"
+        [disabled]="loading || cleanupInProgress">
+        <i class="fa-solid fa-broom" [class.fa-spin]="cleanupInProgress"></i>
+        {{ cleanupInProgress ? 'Cleaning...' : 'Run Cleanup Now' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- Recent Cleanup Results -->
+  <div class="card results-card" *ngIf="lastCleanupResult">
+    <div class="card-header">
+      <h3><i class="fa-solid fa-check-circle"></i> Last Cleanup Result</h3>
+    </div>
+    <div class="card-body">
+      <div class="result-item">
+        <i class="fa-solid fa-trash"></i>
+        <strong>{{ lastCleanupResult.deletedMessages }}</strong> messages deleted
+      </div>
+      <div class="result-item">
+        <i class="fa-solid fa-clock"></i>
+        Completed at <strong>{{ lastCleanupResult.timestamp | date:'medium' }}</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error Display -->
+  <div class="alert alert-danger" *ngIf="error">
+    <i class="fa-solid fa-exclamation-triangle"></i>
+    {{ error }}
+  </div>
+
+  <!-- Success Display -->
+  <div class="alert alert-success" *ngIf="successMessage">
+    <i class="fa-solid fa-check"></i>
+    {{ successMessage }}
+  </div>
+</div>
