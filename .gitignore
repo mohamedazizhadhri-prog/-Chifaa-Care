@@ -1,0 +1,48 @@
+# Node dependencies
+node_modules/
+jspm_packages/
+
+# Angular build output
+/dist/
+/tmp/
+/out/
+/build/
+
+# Angular cache
+/.angular/cache/
+/.angular/local/
+
+# Testing
+/coverage/
+/.nyc_output/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# IDE/editor
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Sass cache
+.sass-cache/
+
+# Misc
+/connect.lock
+/typings/ 
