@@ -1,0 +1,422 @@
+<!-- Main Container -->
+<div class="book-consultation-container">
+  <!-- Header Section -->
+  <header class="consultation-header">
+    <h1>Book Consultation</h1>
+    <p class="subtitle">Find the right oncologist for your needs and book your appointment instantly.</p>
+  </header>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <!-- Filters Sidebar -->
+    <aside class="filters-sidebar">
+      <div class="filter-section">
+        <h3>Filters</h3>
+        
+        <div class="form-group">
+          <label>Specialty</label>
+          <select class="form-control" [(ngModel)]="filters.specialty" (change)="applyFilters()">
+            <option value="">All Specialties</option>
+            <option *ngFor="let spec of specialties" [value]="spec">{{spec}}</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Language</label>
+          <select class="form-control" [(ngModel)]="filters.language" (change)="applyFilters()">
+            <option value="">All Languages</option>
+            <option *ngFor="let lang of languages" [value]="lang">{{lang}}</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Doctor Gender</label>
+          <select class="form-control" [(ngModel)]="filters.gender" (change)="applyFilters()">
+            <option value="">No Preference</option>
+            <option value="MALE">Male</option>
+            <option value="FEMALE">Female</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Sort By</label>
+          <select class="form-control" [(ngModel)]="filters.sortBy" (change)="sortDoctors()">
+            <option *ngFor="let opt of sortOptions" [value]="opt.value">{{opt.label}}</option>
+          </select>
+        </div>
+
+        <button class="btn btn-outline-primary btn-block" (click)="resetFilters()">Clear All Filters</button>
+      </div>
+    </aside>
+
+    <!-- Doctors List -->
+    <section class="doctors-list">
+      <div class="results-info">
+        <h3>{{filteredDoctors.length}} Doctors Available</h3>
+        <div class="toolbar">
+          <button class="btn btn-sm btn-outline-secondary" (click)="loadDoctors()" title="Refresh doctor list">
+            <i class="fas fa-sync-alt"></i> Refresh
+          </button>
+          <input
+            type="text"
+            class="search-input"
+            placeholder="Search by name or specialty..."
+            [(ngModel)]="searchTerm"
+            (input)="applyFilters()"
+          />
+        </div>
+      </div>
+
+      <!-- Doctor Cards -->
+      <div class="doctor-cards">
+        <ng-container *ngIf="filteredDoctors.length > 0; else noResults">
+          <div class="doctor-card" *ngFor="let doctor of filteredDoctors">
+            <ng-container *ngIf="doctor.doctorProfile">
+              <div class="doctor-info">
+                <img [src]="doctor.profileImage || 'assets/images/default-doctor.png'" [alt]="getDoctorFullName(doctor)" class="doctor-photo">
+                <div class="doctor-details">
+                  <h4>{{getDoctorFullName(doctor)}} <span class="badge">{{doctor.doctorProfile.specialization}}</span></h4>
+                  <div class="meta">
+                    <span class="exp">{{doctor.doctorProfile.experience}}+ years experience</span>
+                    <span class="fee" *ngIf="doctor.doctorProfile.consultationFee" style="margin-left: 1rem; color: #4CAF50; font-weight: 600;">
+                      <i class="fas fa-dollar-sign"></i> {{doctor.doctorProfile.consultationFee}}
+                    </span>
+                  </div>
+                  <div class="rating">
+                    <span class="stars">
+                      <span *ngFor="let star of getStars(doctor.doctorProfile.rating)">
+                        <i *ngIf="star === 1" class="fas fa-star"></i>
+                        <i *ngIf="star === 0.5" class="fas fa-star-half-alt"></i>
+                        <i *ngIf="star === 0" class="far fa-star"></i>
+                      </span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div class="doctor-actions">
+                <button type="button" class="btn btn-outline-primary" (click)="$event.stopPropagation(); viewProfile(doctor, doctorProfileModal)">
+                  <i class="fas fa-user-md"></i> View Profile
+                </button>
+                <button *ngIf="!isDoctorUser" type="button" class="btn btn-primary" (click)="$event.stopPropagation(); startBooking(doctor, bookingModal)">
+                  <i class="fas fa-calendar-plus"></i> Book Now
+                </button>
+                <span *ngIf="isDoctorUser" class="muted" style="font-size: 0.9rem; align-self: center;">
+                  Login as patient to book
+                </span>
+              </div>
+            </ng-container>
+          </div>
+        </ng-container>
+
+        <!-- No Results Template -->
+        <ng-template #noResults>
+            <div class="no-results">
+                <i class="fas fa-search"></i>
+                <h4>No doctors found matching your criteria</h4>
+                <p>Try adjusting your filters or search again</p>
+            </div>
+        </ng-template>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- Doctor Profile Modal -->
+<ng-template #doctorProfileModal let-modal>
+  <ng-container *ngIf="selectedDoctor && selectedDoctor.doctorProfile">
+    <div class="modal-header">
+      <h4 class="modal-title">
+        <i class="fas fa-user-md"></i> {{ getDoctorFullName(selectedDoctor) }}
+      </h4>
+      <button type="button" class="close" (click)="modal.dismiss()" aria-label="Close">
+        <span aria-hidden="true">&times;</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="doctor-profile-header">
+        <img class="profile-photo" [src]="selectedDoctor.profileImage || 'assets/images/default-doctor.png'" [alt]="getDoctorFullName(selectedDoctor)">
+        <div class="profile-summary">
+          <div class="rating" *ngIf="selectedDoctor.doctorProfile.rating">
+            <span class="stars">
+              <i class="fas fa-star" *ngFor="let star of getStars(selectedDoctor.doctorProfile.rating)"></i>
+            </span>
+            <span>{{ selectedDoctor.doctorProfile.rating.toFixed(1) }} ({{ selectedDoctor.doctorProfile.reviewCount || 0 }} reviews)</span>
+          </div>
+          <div class="experience">
+            <i class="fas fa-briefcase"></i>
+            <strong>Experience:</strong>
+            <span>{{ selectedDoctor.doctorProfile.experience || 0 }} years</span>
+          </div>
+          <div class="consultation-fee" *ngIf="selectedDoctor.doctorProfile.consultationFee">
+            <i class="fas fa-dollar-sign"></i>
+            <strong>Consultation Fee:</strong>
+            <span style="color: #4CAF50; font-weight: 600;">${{ selectedDoctor.doctorProfile.consultationFee }}</span>
+          </div>
+          <div class="languages" *ngIf="selectedDoctor.doctorProfile.languages">
+            <i class="fas fa-language"></i>
+            <strong>Languages:</strong>
+            <span>{{ selectedDoctor.doctorProfile.languages }}</span>
+          </div>
+          <div class="next-available" *ngIf="selectedDoctor.doctorProfile.availableDays">
+            <i class="far fa-calendar-alt"></i>
+            <strong>Availability:</strong>
+            <span>
+              {{ selectedDoctor.doctorProfile.availableDays }}
+              <span *ngIf="selectedDoctor.doctorProfile.availableHours">
+                ({{ selectedDoctor.doctorProfile.availableHours }})
+              </span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="profile-section">
+        <h5>Specialization</h5>
+        <p>{{ selectedDoctor.doctorProfile.specialization || 'Not specified' }}</p>
+      </div>
+
+      <div class="profile-section" *ngIf="selectedDoctor.doctorProfile.qualifications">
+        <h5>Qualifications</h5>
+        <p>{{ selectedDoctor.doctorProfile.qualifications }}</p>
+      </div>
+
+      <div class="profile-section" *ngIf="selectedDoctor.doctorProfile.bio">
+        <h5>About</h5>
+        <p>{{ selectedDoctor.doctorProfile.bio }}</p>
+      </div>
+    </div>
+    
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline-secondary" (click)="modal.dismiss()">
+        <i class="fas fa-times"></i> Close
+      </button>
+      <button *ngIf="!isDoctorUser" type="button" class="btn btn-primary" (click)="startBooking(selectedDoctor, bookingModal); modal.dismiss()">
+        <i class="far fa-calendar-check"></i> Book Appointment
+      </button>
+      <span *ngIf="isDoctorUser" class="muted" style="font-size: 0.9rem;">
+        Login as patient to book
+      </span>
+    </div>
+  </ng-container>
+</ng-template>
+
+<!-- Booking Form Modal -->
+<ng-template #bookingModal let-modal>
+    <div class="modal-header">
+        <h4 class="modal-title">
+          <span *ngIf="bookingStep === 1">Step 1: Appointment Details</span>
+          <span *ngIf="bookingStep === 2">Step 2: Payment</span>
+          <span *ngIf="bookingStep === 3">Booking Confirmed!</span>
+        </h4>
+        <button type="button" class="close" (click)="onCloseModal(modal)" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    
+    <div class="modal-body">
+        <!-- Progress Steps -->
+        <div class="booking-progress mb-4">
+          <div class="step" [class.active]="bookingStep >= 1" [class.completed]="bookingStep > 1">
+            <div class="step-number">1</div>
+            <div class="step-label">Details</div>
+          </div>
+          <div class="step-line" [class.completed]="bookingStep > 1"></div>
+          <div class="step" [class.active]="bookingStep >= 2" [class.completed]="bookingStep > 2">
+            <div class="step-number">2</div>
+            <div class="step-label">Payment</div>
+          </div>
+          <div class="step-line" [class.completed]="bookingStep > 2"></div>
+          <div class="step" [class.active]="bookingStep >= 3">
+            <div class="step-number">3</div>
+            <div class="step-label">Confirm</div>
+          </div>
+        </div>
+
+        <!-- STEP 1: Booking Details -->
+        <div *ngIf="bookingStep === 1">
+          <!-- Payment Information Banner -->
+          <div class="alert alert-info mb-4">
+            <div class="d-flex align-items-center">
+              <i class="fas fa-info-circle mr-3" style="font-size: 1.5rem;"></i>
+              <div>
+                <strong>Consultation Fee: {{ formatAmount(getConsultationFee()) }}</strong>
+                <p class="mb-0"><small>Payment required to confirm your appointment.</small></p>
+              </div>
+            </div>
+          </div>
+
+          <form [formGroup]="bookingForm">
+            <div class="form-group">
+              <label><strong>Consultation Type</strong></label>
+              <div class="btn-group d-flex" role="group">
+                <button type="button" class="btn btn-outline-primary" 
+                        [class.active]="bookingForm.get('consultationType')?.value === ConsultationType.VIDEO" 
+                        (click)="bookingForm.get('consultationType')?.setValue(ConsultationType.VIDEO)">
+                  <i class="fas fa-video"></i> Video Call
+                </button>
+                <button type="button" class="btn btn-outline-primary" 
+                        [class.active]="bookingForm.get('consultationType')?.value === ConsultationType.IN_PERSON" 
+                        (click)="bookingForm.get('consultationType')?.setValue(ConsultationType.IN_PERSON)">
+                  <i class="fas fa-hospital"></i> In-Person
+                </button>
+                <button type="button" class="btn btn-outline-primary" 
+                        [class.active]="bookingForm.get('consultationType')?.value === ConsultationType.PHONE" 
+                        (click)="bookingForm.get('consultationType')?.setValue(ConsultationType.PHONE)">
+                  <i class="fas fa-phone"></i> Phone Call
+                </button>
+              </div>
+            </div>
+            
+            <div class="row">
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label><strong>Preferred Date</strong> <span class="text-danger">*</span></label>
+                  <input type="date" class="form-control" formControlName="date" [min]="getMinDate()" required>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label><strong>Preferred Time</strong> <span class="text-danger">*</span></label>
+                  <input type="time" class="form-control" formControlName="time" required>
+                </div>
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label><strong>Reason for Consultation</strong> <span class="text-danger">*</span></label>
+              <textarea class="form-control" rows="4" formControlName="reason" 
+                        placeholder="Please describe your symptoms or reason for consultation..." required></textarea>
+              <small class="form-text text-muted">This helps the doctor prepare for your consultation</small>
+            </div>
+          </form>
+        </div>
+
+        <!-- STEP 2: Payment -->
+        <div *ngIf="bookingStep === 2">
+          <div class="appointment-summary mb-4">
+            <h5>Appointment Summary</h5>
+            <div class="summary-row">
+              <span class="label">Doctor:</span>
+              <span class="value">{{ bookingDetails.doctorName }}</span>
+            </div>
+            <div class="summary-row">
+              <span class="label">Date:</span>
+              <span class="value">{{ bookingForm.get('date')?.value }}</span>
+            </div>
+            <div class="summary-row">
+              <span class="label">Time:</span>
+              <span class="value">{{ bookingForm.get('time')?.value }}</span>
+            </div>
+            <div class="summary-row">
+              <span class="label">Type:</span>
+              <span class="value">{{ bookingForm.get('consultationType')?.value }}</span>
+            </div>
+            <div class="summary-row total">
+              <span class="label">Total Amount:</span>
+              <span class="value">{{ formatAmount(getConsultationFee()) }}</span>
+            </div>
+          </div>
+
+          <div class="payment-section">
+            <h5>Payment Information</h5>
+            
+            <!-- Mock Payment Mode -->
+            <div *ngIf="useMockPayment" class="alert alert-warning">
+              <i class="fas fa-exclamation-triangle"></i>
+              <strong>Development Mode:</strong> Using mock payment (Stripe not configured)
+            </div>
+            
+            <!-- Real Stripe Payment -->
+            <div *ngIf="!useMockPayment">
+              <p class="text-muted mb-3"><small><i class="fas fa-lock"></i> Secure payment powered by Stripe</small></p>
+              <div id="card-element" class="stripe-card-element"></div>
+              <div id="card-errors" class="error-message"></div>
+            </div>
+            
+            <!-- Mock Payment Message -->
+            <div *ngIf="useMockPayment" class="mock-payment-info">
+              <p class="text-muted mb-3">
+                <i class="fas fa-info-circle"></i> 
+                In development mode, your appointment will be automatically confirmed without requiring payment.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 3: Confirmation -->
+        <div *ngIf="bookingStep === 3" class="booking-confirmation">
+          <div class="text-center py-4">
+            <div class="success-icon">
+              <i class="fas fa-check-circle"></i>
+            </div>
+            <h4>Payment Successful!</h4>
+            <p class="text-muted">Your appointment has been confirmed.</p>
+            
+            <div class="confirmation-details mt-4">
+              <div class="detail-row">
+                <span class="label">Payment ID:</span>
+                <span class="value">{{ paymentId }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="label">Amount Paid:</span>
+                <span class="value">{{ formatAmount(getConsultationFee()) }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="label">Doctor:</span>
+                <span class="value">{{ bookingDetails.doctorName }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="label">Date & Time:</span>
+                <span class="value">{{ bookingForm.get('date')?.value }} at {{ bookingForm.get('time')?.value }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+    </div>
+    
+    <div class="modal-footer">
+      <!-- Step 1 Footer -->
+      <ng-container *ngIf="bookingStep === 1">
+        <button type="button" class="btn btn-outline-secondary" (click)="modal.dismiss()">
+          <i class="fas fa-times"></i> Cancel
+        </button>
+        <button type="button" class="btn btn-primary" 
+                [disabled]="bookingForm.invalid || isProcessing" 
+                (click)="goToPaymentStep()">
+          <span *ngIf="!isProcessing">
+            <i class="fas fa-arrow-right"></i> Next: Payment
+          </span>
+          <span *ngIf="isProcessing">
+            <i class="fas fa-spinner fa-spin"></i> Creating Appointment...
+          </span>
+        </button>
+      </ng-container>
+
+      <!-- Step 2 Footer -->
+      <ng-container *ngIf="bookingStep === 2">
+        <button type="button" class="btn btn-outline-secondary" 
+                [disabled]="isProcessing"
+                (click)="goBackToDetails()">
+          <i class="fas fa-arrow-left"></i> Back
+        </button>
+        <button type="button" class="btn btn-success" 
+                [disabled]="isProcessing || (!useMockPayment && !cardElement)" 
+                (click)="handlePayment()">
+          <span *ngIf="!isProcessing">
+            <i [class]="useMockPayment ? 'fas fa-check-circle' : 'fas fa-credit-card'"></i> 
+            {{ useMockPayment ? 'Confirm Appointment' : 'Pay ' + formatAmount(getConsultationFee()) }}
+          </span>
+          <span *ngIf="isProcessing">
+            <i class="fas fa-spinner fa-spin"></i> {{ useMockPayment ? 'Confirming...' : 'Processing Payment...' }}
+          </span>
+        </button>
+      </ng-container>
+
+      <!-- Step 3 Footer -->
+      <ng-container *ngIf="bookingStep === 3">
+        <button type="button" class="btn btn-primary" (click)="closeModalAndRedirect(modal)">
+          <i class="fas fa-calendar-check"></i> View My Appointments
+        </button>
+      </ng-container>
+    </div>
+</ng-template>

@@ -1,0 +1,271 @@
+<div class="calendar-container fade-in">
+  <div class="calendar-header">
+    <div class="header-left">
+      <h2>My Calendar</h2>
+      <p class="text-muted">{{ getCurrentDateRange() }}</p>
+    </div>
+    <div class="header-center">
+      <div class="view-toggle">
+        <button 
+          class="view-btn" 
+          [class.active]="viewMode === 'day'" 
+          (click)="setViewMode('day')">
+          Day
+        </button>
+        <button 
+          class="view-btn" 
+          [class.active]="viewMode === 'week'" 
+          (click)="setViewMode('week')">
+          Week
+        </button>
+        <button 
+          class="view-btn" 
+          [class.active]="viewMode === '2weeks'" 
+          (click)="setViewMode('2weeks')">
+          2 Weeks
+        </button>
+        <button 
+          class="view-btn" 
+          [class.active]="viewMode === 'month'" 
+          (click)="setViewMode('month')">
+          Month
+        </button>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-outline" (click)="previous()">
+        <i class="fa-solid fa-chevron-left"></i> Previous
+      </button>
+      <button class="btn btn-outline" (click)="today()">Today</button>
+      <button class="btn btn-outline" (click)="next()">
+        Next <i class="fa-solid fa-chevron-right"></i>
+      </button>
+    </div>
+  </div>
+
+  <div class="calendar-legend">
+    <div class="legend-item">
+      <span class="legend-dot pending"></span>
+      <span>Pending Approval</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-dot confirmed"></span>
+      <span>Confirmed</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-dot completed"></span>
+      <span>Completed</span>
+    </div>
+  </div>
+
+  <!-- Day View -->
+  <div class="calendar-grid day-view" *ngIf="!loading && viewMode === 'day'">
+    <div class="time-column">
+      <div class="time-header">Time</div>
+      <div class="time-slot" *ngFor="let hour of hours">
+        {{ hour }}
+      </div>
+    </div>
+
+    <div class="day-column">
+      <div class="day-header" [class.today]="isToday(currentDate)">
+        <div class="day-name">{{ getDayName(currentDate) }}</div>
+        <div class="day-date">{{ getDayDate(currentDate) }}</div>
+      </div>
+      
+      <div class="day-body">
+        <div class="time-slot" *ngFor="let hour of hours">
+          <div 
+            class="event" 
+            *ngFor="let event of getEventsForSlot(currentDate, hour)"
+            [class]="'event-' + event.status.toLowerCase()"
+            (click)="openEventModal(event, eventModal)"
+          >
+            <div class="event-time">{{ formatTime(event.start) }}</div>
+            <div class="event-title">{{ event.title }}</div>
+            <div class="event-reason" *ngIf="event.reason">{{ event.reason }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Week View -->
+  <div class="calendar-grid week-view" *ngIf="!loading && viewMode === 'week'">
+    <div class="time-column">
+      <div class="time-header"></div>
+      <div class="time-slot" *ngFor="let hour of hours">
+        {{ hour }}
+      </div>
+    </div>
+
+    <div class="day-column" *ngFor="let day of weekDays">
+      <div class="day-header" [class.today]="isToday(day)">
+        <div class="day-name">{{ getDayName(day) }}</div>
+        <div class="day-date">{{ getDayDate(day) }}</div>
+      </div>
+      
+      <div class="day-body">
+        <div class="time-slot" *ngFor="let hour of hours">
+          <div 
+            class="event" 
+            *ngFor="let event of getEventsForSlot(day, hour)"
+            [class]="'event-' + event.status.toLowerCase()"
+            (click)="openEventModal(event, eventModal)"
+          >
+            <div class="event-time">{{ formatTime(event.start) }}</div>
+            <div class="event-title">{{ event.title }}</div>
+            <div class="event-reason" *ngIf="event.reason">{{ event.reason }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2 Weeks View -->
+  <div class="calendar-grid two-weeks-view" *ngIf="!loading && viewMode === '2weeks'">
+    <div class="time-column">
+      <div class="time-header"></div>
+      <div class="time-slot" *ngFor="let hour of hours">
+        {{ hour }}
+      </div>
+    </div>
+
+    <div class="day-column" *ngFor="let day of twoWeeksDays">
+      <div class="day-header" [class.today]="isToday(day)">
+        <div class="day-name">{{ getDayName(day) }}</div>
+        <div class="day-date">{{ getDayDate(day) }}</div>
+      </div>
+      
+      <div class="day-body">
+        <div class="time-slot" *ngFor="let hour of hours">
+          <div 
+            class="event" 
+            *ngFor="let event of getEventsForSlot(day, hour)"
+            [class]="'event-' + event.status.toLowerCase()"
+            (click)="openEventModal(event, eventModal)"
+          >
+            <div class="event-time">{{ formatTime(event.start) }}</div>
+            <div class="event-title">{{ event.title }}</div>
+            <div class="event-reason" *ngIf="event.reason">{{ event.reason }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Month View -->
+  <div class="month-view" *ngIf="!loading && viewMode === 'month'">
+    <div class="month-header">
+      <div class="month-day-name" *ngFor="let name of ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']">
+        {{ name }}
+      </div>
+    </div>
+    <div class="month-grid">
+      <div 
+        class="month-day" 
+        *ngFor="let day of monthDays"
+        [class.other-month]="!isCurrentMonth(day)"
+        [class.today]="isToday(day)"
+      >
+        <div class="month-day-number">{{ getDayDate(day) }}</div>
+        <div class="month-day-events">
+          <div 
+            class="month-event" 
+            *ngFor="let event of getEventsForDay(day)"
+            [class]="'event-' + event.status.toLowerCase()"
+            (click)="openEventModal(event, eventModal)"
+            [title]="event.title + ' - ' + formatTime(event.start)"
+          >
+            <span class="event-dot"></span>
+            <span class="event-text">{{ formatTime(event.start) }} {{ event.title }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="loading-state" *ngIf="loading">
+    <i class="fa-solid fa-spinner fa-spin"></i>
+    <p>Loading calendar...</p>
+  </div>
+
+  <div class="error-state" *ngIf="error">
+    <i class="fa-solid fa-triangle-exclamation"></i>
+    <p>{{ error }}</p>
+  </div>
+</div>
+
+<!-- Event Details Modal -->
+<ng-template #eventModal let-modal>
+  <div class="modal-header">
+    <h4 class="modal-title">Appointment Details</h4>
+    <button type="button" class="btn-close" (click)="modal.dismiss()"></button>
+  </div>
+  <div class="modal-body" *ngIf="selectedEvent">
+    <div class="detail-row">
+      <label>Patient:</label>
+      <span>{{ selectedEvent.patientName }}</span>
+    </div>
+    <div class="detail-row">
+      <label>Email:</label>
+      <span>{{ selectedEvent.patientEmail }}</span>
+    </div>
+    <div class="detail-row">
+      <label>Date & Time:</label>
+      <span>{{ formatDateTime(selectedEvent.start) }} - {{ formatTime(selectedEvent.end) }}</span>
+    </div>
+    <div class="detail-row">
+      <label>Status:</label>
+      <span class="badge" [class]="'badge-' + selectedEvent.status.toLowerCase()">
+        {{ selectedEvent.status }}
+      </span>
+    </div>
+    <div class="detail-row" *ngIf="selectedEvent.reason">
+      <label>Reason:</label>
+      <span>{{ selectedEvent.reason }}</span>
+    </div>
+
+    <!-- Pending appointments need approval -->
+    <div class="action-buttons" *ngIf="selectedEvent.status === 'PENDING'">
+      <button class="btn btn-success" (click)="acceptAppointment()" [disabled]="processing">
+        <i class="fa-solid fa-check"></i> Accept
+      </button>
+      <button class="btn btn-danger" (click)="rejectAppointment()" [disabled]="processing">
+        <i class="fa-solid fa-times"></i> Reject
+      </button>
+    </div>
+
+    <!-- Reschedule options for confirmed appointments -->
+    <div class="reschedule-section" *ngIf="selectedEvent.status === 'CONFIRMED' && !showRescheduleForm">
+      <button class="btn btn-outline" (click)="showRescheduleForm = true">
+        <i class="fa-solid fa-calendar"></i> Reschedule
+      </button>
+    </div>
+
+    <!-- Reschedule form -->
+    <div class="reschedule-form" *ngIf="showRescheduleForm">
+      <h5>Reschedule Appointment</h5>
+      <div class="form-group">
+        <label>New Date:</label>
+        <input type="date" [(ngModel)]="rescheduleDate" class="form-control" [min]="getMinDate()">
+      </div>
+      <div class="form-group">
+        <label>New Time:</label>
+        <input type="time" [(ngModel)]="rescheduleTime" class="form-control">
+      </div>
+      <div class="form-group">
+        <label>Reason (optional):</label>
+        <textarea [(ngModel)]="rescheduleReason" class="form-control" rows="2"></textarea>
+      </div>
+      <div class="action-buttons">
+        <button class="btn btn-blue" (click)="confirmReschedule()" [disabled]="processing || !canReschedule()">
+          <i class="fa-solid fa-check"></i> Confirm Reschedule
+        </button>
+        <button class="btn btn-outline" (click)="cancelReschedule()" [disabled]="processing">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+</ng-template>
