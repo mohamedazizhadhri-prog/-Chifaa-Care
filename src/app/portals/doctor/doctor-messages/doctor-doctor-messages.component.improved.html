@@ -1,0 +1,283 @@
+<div class="messages-container">
+  <div class="messages-layout">
+    <!-- Chat List Sidebar -->
+    <aside class="chat-sidebar card">
+      <div class="sidebar-header">
+        <div class="card-header">
+          <span>Doctor Messages</span>
+          <div class="header-actions">
+            <!-- Refresh Button -->
+            <button 
+              class="btn-icon refresh-btn" 
+              (click)="forceRefreshConversations()"
+              [class.loading]="isLoadingConversations"
+              title="Refresh conversations">
+              <i class="fa-solid fa-arrows-rotate" [class.fa-spin]="isLoadingConversations"></i>
+            </button>
+            <div class="unread-count" *ngIf="getUnreadCount() > 0">
+              {{ getUnreadCount() }}
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="sidebar-actions">
+        <button class="btn btn-outline" (click)="toggleDoctorPicker()">
+          <i class="fa-solid fa-user-doctor"></i> New chat
+        </button>
+      </div>
+
+      <!-- Doctor Picker -->
+      <div *ngIf="showDoctorPicker" class="doctor-picker card">
+        <div class="picker-header">
+          <span>Start a new chat with a doctor</span>
+          <button 
+            class="btn-icon" 
+            (click)="forceRefreshDoctors()"
+            [class.loading]="isLoadingDoctors"
+            title="Refresh doctors list">
+            <i class="fa-solid fa-arrows-rotate" [class.fa-spin]="isLoadingDoctors"></i>
+          </button>
+        </div>
+        
+        <!-- Loading State -->
+        <div *ngIf="isLoadingDoctors" class="loading-state">
+          <i class="fa-solid fa-spinner fa-spin"></i>
+          <span>Loading doctors...</span>
+        </div>
+        
+        <!-- No Doctors -->
+        <div *ngIf="!isLoadingDoctors && otherDoctors.length === 0" class="no-doctors">
+          <i class="fa-solid fa-user-doctor"></i>
+          <p>No other doctors available.</p>
+        </div>
+        
+        <!-- Doctors List -->
+        <div 
+          *ngFor="let doctor of otherDoctors" 
+          class="doctor-item"
+          (click)="startChatWithDoctor(doctor)">
+          <div class="chat-avatar">
+            <i class="fa-solid fa-user-doctor"></i>
+          </div>
+          <div class="doctor-info">
+            <div class="doctor-name">{{ doctor.firstName }} {{ doctor.lastName }}</div>
+            <div class="doctor-specialty">{{ doctor.specialization }}</div>
+          </div>
+          <div class="doctor-action">
+            <i class="fa-solid fa-comment-dots"></i>
+          </div>
+        </div>
+      </div>
+
+      <div class="chat-search">
+        <input 
+          type="text" 
+          placeholder="Search doctors..." 
+          [(ngModel)]="searchQuery" 
+          (input)="filterChats()">
+        <i class="fa-solid fa-search"></i>
+      </div>
+
+      <!-- Loading State for Conversations -->
+      <div *ngIf="isLoadingConversations && conversations.length === 0" class="loading-state">
+        <i class="fa-solid fa-spinner fa-spin"></i>
+        <span>Loading conversations...</span>
+      </div>
+
+      <!-- No Conversations -->
+      <div *ngIf="!isLoadingConversations && filteredChats.length === 0" class="no-chats">
+        <i class="fa-solid fa-comments"></i>
+        <p>No conversations yet</p>
+        <button class="btn btn-sm btn-primary" (click)="toggleDoctorPicker()">
+          Start a chat
+        </button>
+      </div>
+
+      <!-- Chat List -->
+      <div class="chat-list">
+        <div 
+          *ngFor="let chat of filteredChats"
+          class="chat-item"
+          [class.active]="selectedChatId === chat.id"
+          [class.unread]="chat.unreadCount > 0"
+          (click)="selectChat(chat.id)">
+          <div class="chat-avatar">
+            <i class="fa-solid fa-user-doctor"></i>
+            <span class="online-indicator" *ngIf="chat.isOnline"></span>
+          </div>
+          <div class="chat-info">
+            <div class="chat-name">{{ chat.doctorName || 'Doctor' }}</div>
+            <div class="chat-preview">{{ chat.lastMessage || 'No messages yet' }}</div>
+          </div>
+          <div class="chat-status">
+            <span class="chat-time">{{ chat.lastMessageTime | date:'shortTime' }}</span>
+            <span *ngIf="chat.unreadCount > 0" class="unread-badge">
+              {{ chat.unreadCount }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Chat Area -->
+    <div class="chat-area" *ngIf="selectedChat">
+      <div class="chat-header">
+        <div class="chat-doctor-info">
+          <div class="doctor-avatar">
+            <i class="fa-solid fa-user-doctor"></i>
+            <span class="online-indicator" *ngIf="selectedChat.isOnline"></span>
+          </div>
+          <div class="doctor-details">
+            <strong>{{ selectedChat.doctorName || 'Doctor' }}</strong>
+            <span class="doctor-status" [class.online]="selectedChat.isOnline">
+              <i class="fa-solid fa-circle"></i>
+              {{ selectedChat.isOnline ? 'Online' : 'Offline' }}
+            </span>
+            <span *ngIf="dialing" class="call-status">
+              <i class="fa-solid fa-phone fa-shake"></i> Ringing...
+            </span>
+          </div>
+        </div>
+        <div class="chat-actions">
+          <!-- Refresh Messages Button -->
+          <button 
+            class="btn-icon" 
+            (click)="refreshMessages()"
+            [class.loading]="isLoadingMessages"
+            title="Refresh messages">
+            <i class="fa-solid fa-arrows-rotate" [class.fa-spin]="isLoadingMessages"></i>
+          </button>
+          
+          <div class="dropdown">
+            <button class="btn btn-outline" (click)="toggleCallMenu()">
+              <i class="fa-solid fa-phone"></i> Request Call
+            </button>
+            <div *ngIf="showCallMenu" class="dropdown-menu">
+              <button class="dropdown-item" (click)="startCall('audio')">
+                <i class="fa-solid fa-microphone"></i> Voice only
+              </button>
+              <button class="dropdown-item" (click)="startCall('video')">
+                <i class="fa-solid fa-video"></i> Video + Voice
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Incoming call banner -->
+      <div class="incoming-banner" *ngIf="incomingCall">
+        <div class="incoming-info">
+          <i class="fa-solid fa-phone-volume fa-shake"></i>
+          <strong>Incoming {{ mediaType }} call from {{ selectedChat.doctorName }}</strong>
+        </div>
+        <div class="incoming-actions">
+          <button class="btn btn-success" (click)="acceptIncoming()">
+            <i class="fa-solid fa-phone"></i> Accept
+          </button>
+          <button class="btn btn-danger" (click)="declineIncoming()">
+            <i class="fa-solid fa-phone-slash"></i> Decline
+          </button>
+        </div>
+      </div>
+
+      <!-- Call Panel -->
+      <div class="call-panel card" *ngIf="inCall">
+        <div class="call-header">
+          <div class="call-info">
+            <strong>Call with {{ selectedChat?.doctorName }}</strong>
+            <span class="badge" [class.badge-video]="mediaType==='video'" [class.badge-audio]="mediaType==='audio'">
+              <i class="fa-solid" [class.fa-video]="mediaType==='video'" [class.fa-microphone]="mediaType==='audio'"></i>
+              {{ mediaType | uppercase }}
+            </span>
+          </div>
+        </div>
+        <div class="videos" [class.audio-only]="mediaType==='audio'">
+          <video #localVideo autoplay playsinline muted class="local-video"></video>
+          <video #remoteVideo autoplay playsinline [muted]="false" class="remote-video"></video>
+          <div *ngIf="mediaType==='audio'" class="audio-indicator">
+            <i class="fa-solid fa-microphone fa-2x"></i>
+            <p>Voice Call Active</p>
+          </div>
+        </div>
+        <div class="call-actions">
+          <button class="btn btn-danger" (click)="endCall()">
+            <i class="fa-solid fa-phone-slash"></i> End Call
+          </button>
+        </div>
+      </div>
+      
+      <!-- Loading Messages -->
+      <div *ngIf="isLoadingMessages && currentMessages.length === 0" class="loading-messages">
+        <i class="fa-solid fa-spinner fa-spin"></i>
+        <span>Loading messages...</span>
+      </div>
+      
+      <!-- Messages Container -->
+      <div #messagesContainer class="chat-messages" [class.with-call]="inCall">
+        <div *ngIf="currentMessages.length === 0 && !isLoadingMessages" class="no-messages">
+          <i class="fa-regular fa-comments"></i>
+          <p>No messages yet. Start the conversation!</p>
+        </div>
+        
+        <div 
+          *ngFor="let msg of currentMessages" 
+          class="message" 
+          [class.sent]="msg.senderId === currentUser?.id" 
+          [class.received]="msg.senderId !== currentUser?.id">
+          <div class="message-content">{{ msg.content }}</div>
+          <div class="message-time">
+            {{ msg.timestamp | date:'shortTime' }}
+            <i 
+              *ngIf="msg.senderId === currentUser?.id" 
+              class="message-status" 
+              [class.read]="msg.isRead">
+              {{ msg.isRead ? '✓✓' : '✓' }}
+            </i>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Message Input -->
+      <div class="message-input-container">
+        <form (ngSubmit)="sendMessage()" class="message-form">
+          <div class="message-input-wrapper">
+            <textarea 
+              #messageInput
+              class="message-input" 
+              [(ngModel)]="newMessage" 
+              name="message" 
+              placeholder="Type a message..."
+              (keydown)="onTextareaKeydown($event)"
+              rows="1">
+            </textarea>
+            <div class="message-actions">
+              <button type="button" class="btn-icon" (click)="attachFile()" title="Attach file">
+                <i class="fa-solid fa-paperclip"></i>
+              </button>
+            </div>
+          </div>
+          <button 
+            type="submit" 
+            class="send-button" 
+            [disabled]="!newMessage.trim()"
+            title="Send message">
+            <i class="fa-solid fa-paper-plane"></i>
+          </button>
+        </form>
+      </div>
+    </div>
+    
+    <!-- No chat selected -->
+    <div *ngIf="!selectedChat" class="no-chat-selected">
+      <div class="no-chat-content">
+        <i class="fa-solid fa-comments no-chat-icon"></i>
+        <h3>No conversation selected</h3>
+        <p>Select a chat or start a new conversation with a doctor</p>
+        <button class="btn btn-primary" (click)="toggleDoctorPicker()">
+          <i class="fa-solid fa-plus"></i> New Chat
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
