@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rami Game Tester</title>
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            color: #667eea;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .setup-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .input-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            transition: all 0.3s;
+        }
+        
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .status.connected {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .game-section {
+            display: none;
+            margin-bottom: 20px;
+        }
+        
+        .game-section.active {
+            display: block;
+        }
+        
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .card {
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .card.selected {
+            background: #667eea;
+            color: white;
+        }
+        
+        .card-rank {
+            font-size: 20px;
+            font-weight: bold;
+        }
+        
+        .card-suit {
+            font-size: 16px;
+        }
+        
+        .log {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 6px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+        }
+        
+        .log-entry.error {
+            color: #ff6b6b;
+        }
+        
+        .log-entry.success {
+            color: #51cf66;
+        }
+        
+        .log-entry.info {
+            color: #74c0fc;
+        }
+        
+        .game-info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        
+        .game-info-item {
+            margin-bottom: 8px;
+        }
+        
+        .game-info-label {
+            font-weight: 600;
+            color: #1976d2;
+        }
+        
+        .chat-section {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        
+        .chat-messages {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 4px;
+        }
+        
+        .chat-message {
+            margin-bottom: 8px;
+            padding: 8px;
+            background: #e3f2fd;
+            border-radius: 4px;
+        }
+        
+        .chat-message .name {
+            font-weight: 600;
+            color: #1976d2;
+        }
+        
+        .chat-input-group {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .chat-input-group input {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 Rami Game Tester</h1>
+        
+        <!-- Status -->
+        <div id="status" class="status disconnected">
+            ⚠️ Disconnected
+        </div>
+        
+        <!-- Setup Section -->
+        <div id="setupSection" class="setup-section">
+            <h2>Setup Player</h2>
+            
+            <div class="input-group">
+                <label for="serverUrl">Server URL:</label>
+                <input type="text" id="serverUrl" value="http://localhost:3001">
+            </div>
+            
+            <div class="input-group">
+                <label for="playerId">Player ID:</label>
+                <input type="text" id="playerId" placeholder="player_1">
+            </div>
+            
+            <div class="input-group">
+                <label for="playerName">Player Name:</label>
+                <input type="text" id="playerName" placeholder="Alice">
+            </div>
+            
+            <button onclick="connectPlayer()">Connect & Authenticate</button>
+        </div>
+        
+        <!-- Game Actions Section -->
+        <div id="gameSection" class="game-section">
+            <h2>Game Actions</h2>
+            
+            <div style="margin-bottom: 20px;">
+                <button onclick="createGame()">Create New Game</button>
+                <button onclick="joinGame()">Join Game</button>
+                <button onclick="markReady()">Mark Ready</button>
+                <button onclick="startGame()">Start Game (Host)</button>
+            </div>
+            
+            <div class="input-group">
+                <label for="gameIdInput">Game ID (for joining):</label>
+                <input type="text" id="gameIdInput" placeholder="Enter game ID">
+            </div>
+            
+            <!-- Game Info -->
+            <div id="gameInfo" class="game-info" style="display:none;">
+                <h3>Game Information</h3>
+                <div class="game-info-item">
+                    <span class="game-info-label">Game ID:</span>
+                    <span id="currentGameId">-</span>
+                </div>
+                <div class="game-info-item">
+                    <span class="game-info-label">Current Turn:</span>
+                    <span id="currentTurn">-</span>
+                </div>
+                <div class="game-info-item">
+                    <span class="game-info-label">Deck Size:</span>
+                    <span id="deckSize">-</span>
+                </div>
+                <div class="game-info-item">
+                    <span class="game-info-label">Top Discard:</span>
+                    <span id="topDiscard">-</span>
+                </div>
+            </div>
+            
+            <!-- Turn Actions -->
+            <div id="turnActions" style="display:none; margin-bottom: 20px;">
+                <h3>Your Turn</h3>
+                <button onclick="drawCard(false)">Draw from Deck</button>
+                <button onclick="drawCard(true)">Draw from Discard</button>
+                <button onclick="discardSelected()">Discard Selected Card</button>
+            </div>
+            
+            <!-- Your Hand -->
+            <div id="handSection" style="display:none;">
+                <h3>Your Hand</h3>
+                <div id="hand" class="cards-grid"></div>
+            </div>
+            
+            <!-- Chat -->
+            <div class="chat-section" style="display:none;" id="chatSection">
+                <h3>Chat</h3>
+                <div id="chatMessages" class="chat-messages"></div>
+                <div class="chat-input-group">
+                    <input type="text" id="chatInput" placeholder="Type a message..." 
+                           onkeypress="if(event.key==='Enter') sendMessage()">
+                    <button onclick="sendMessage()">Send</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Log -->
+        <div>
+            <h3>Console Log</h3>
+            <div id="log" class="log"></div>
+        </div>
+    </div>
+    
+    <script>
+        let socket = null;
+        let currentGameId = null;
+        let myPlayerId = null;
+        let myHand = [];
+        let selectedCardId = null;
+        
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            const timestamp = new Date().toLocaleTimeString();
+            entry.textContent = `[${timestamp}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        function updateStatus(connected) {
+            const statusDiv = document.getElementById('status');
+            if (connected) {
+                statusDiv.className = 'status connected';
+                statusDiv.textContent = '✅ Connected & Authenticated';
+            } else {
+                statusDiv.className = 'status disconnected';
+                statusDiv.textContent = '⚠️ Disconnected';
+            }
+        }
+        
+        function connectPlayer() {
+            const serverUrl = document.getElementById('serverUrl').value;
+            const playerId = document.getElementById('playerId').value;
+            const playerName = document.getElementById('playerName').value;
+            
+            if (!playerId || !playerName) {
+                alert('Please enter Player ID and Name');
+                return;
+            }
+            
+            myPlayerId = playerId;
+            
+            log(`Connecting to ${serverUrl}...`);
+            socket = io(serverUrl);
+            
+            socket.on('connect', () => {
+                log('Socket connected!', 'success');
+                
+                // Authenticate
+                socket.emit('authenticate', {
+                    playerId: playerId,
+                    playerName: playerName,
+                    playerAvatar: `https://i.pravatar.cc/150?u=${playerId}`
+                });
+            });
+            
+            socket.on('authenticated', (data) => {
+                log('✅ Authenticated successfully!', 'success');
+                updateStatus(true);
+                document.getElementById('gameSection').classList.add('active');
+            });
+            
+            socket.on('auth_error', (err) => {
+                log(`❌ Auth error: ${err.message}`, 'error');
+            });
+            
+            socket.on('disconnect', () => {
+                log('Disconnected from server', 'error');
+                updateStatus(false);
+            });
+            
+            // Game events
+            socket.on('game:created', ({ gameId, game }) => {
+                log(`✅ Game created! ID: ${gameId}`, 'success');
+                currentGameId = gameId;
+                document.getElementById('currentGameId').textContent = gameId;
+                document.getElementById('gameInfo').style.display = 'block';
+                document.getElementById('chatSection').style.display = 'block';
+                
+                if (game.myHand) {
+                    updateHand(game.myHand);
+                }
+            });
+            
+            socket.on('game:joined', ({ game }) => {
+                log('✅ Joined game successfully!', 'success');
+                currentGameId = game.id;
+                document.getElementById('currentGameId').textContent = game.id;
+                document.getElementById('gameInfo').style.display = 'block';
+                document.getElementById('chatSection').style.display = 'block';
+                
+                if (game.myHand) {
+                    updateHand(game.myHand);
+                }
+            });
+            
+            socket.on('game:player_joined', (data) => {
+                log(`👤 ${data.player.name} joined the game`);
+            });
+            
+            socket.on('player:all_ready', () => {
+                log('✅ All players ready!', 'success');
+            });
+            
+            socket.on('game:started', (data) => {
+                log('🎮 GAME STARTED!', 'success');
+                document.getElementById('currentTurn').textContent = data.currentPlayer.name;
+                document.getElementById('deckSize').textContent = data.deckSize;
+                
+                if (data.myHand) {
+                    updateHand(data.myHand);
+                    document.getElementById('handSection').style.display = 'block';
+                }
+                
+                if (data.discardPile && data.discardPile.length > 0) {
+                    updateDiscard(data.discardPile[0]);
+                }
+                
+                checkTurn(data.currentPlayer.id);
+            });
+            
+            socket.on('game:card_drawn', (data) => {
+                log(`🎴 ${data.player.name} drew a card`);
+                
+                if (data.myHand) {
+                    updateHand(data.myHand);
+                }
+            });
+            
+            socket.on('game:card_discarded', (data) => {
+                log(`🗑️ ${data.player.name} discarded a card`);
+                
+                if (data.discardPile && data.discardPile.length > 0) {
+                    updateDiscard(data.discardPile[0]);
+                }
+                
+                if (data.myHand) {
+                    updateHand(data.myHand);
+                }
+            });
+            
+            socket.on('game:turn_changed', (data) => {
+                log(`🔄 Turn changed to: ${data.player.name}`);
+                document.getElementById('currentTurn').textContent = data.player.name;
+                checkTurn(data.player.id);
+            });
+            
+            socket.on('game:meld_created', (data) => {
+                log(`✨ ${data.player.name} created a meld!`);
+            });
+            
+            socket.on('game:rami_declared', (data) => {
+                log(`🏆 ${data.player.name} declared RAMI!`, 'success');
+            });
+            
+            socket.on('game:over', (data) => {
+                log(`🎯 Game Over! Winner: ${data.winner.name}`, 'success');
+                document.getElementById('turnActions').style.display = 'none';
+            });
+            
+            socket.on('game:error', (err) => {
+                log(`❌ Game error: ${err.message}`, 'error');
+            });
+            
+            socket.on('player:error', (err) => {
+                log(`❌ Player error: ${err.message}`, 'error');
+            });
+            
+            // Chat events
+            socket.on('player:message', (data) => {
+                addChatMessage(data.playerName, data.message);
+            });
+        }
+        
+        function checkTurn(currentPlayerId) {
+            if (currentPlayerId === myPlayerId) {
+                document.getElementById('turnActions').style.display = 'block';
+                log('🎯 It\'s YOUR turn!', 'success');
+            } else {
+                document.getElementById('turnActions').style.display = 'none';
+            }
+        }
+        
+        function updateHand(hand) {
+            myHand = hand;
+            const handDiv = document.getElementById('hand');
+            handDiv.innerHTML = '';
+            
+            hand.forEach(card => {
+                const cardDiv = document.createElement('div');
+                cardDiv.className = 'card';
+                cardDiv.onclick = () => selectCard(card.id);
+                
+                if (selectedCardId === card.id) {
+                    cardDiv.classList.add('selected');
+                }
+                
+                const rankDiv = document.createElement('div');
+                rankDiv.className = 'card-rank';
+                rankDiv.textContent = card.rank === 'JOKER' ? '🃏' : card.rank;
+                
+                const suitDiv = document.createElement('div');
+                suitDiv.className = 'card-suit';
+                const suitSymbols = {
+                    'HEARTS': '♥️',
+                    'DIAMONDS': '♦️',
+                    'CLUBS': '♣️',
+                    'SPADES': '♠️'
+                };
+                suitDiv.textContent = suitSymbols[card.suit] || '';
+                
+                cardDiv.appendChild(rankDiv);
+                cardDiv.appendChild(suitDiv);
+                handDiv.appendChild(cardDiv);
+            });
+        }
+        
+        function selectCard(cardId) {
+            selectedCardId = cardId;
+            updateHand(myHand);
+            log(`Selected card: ${cardId}`);
+        }
+        
+        function updateDiscard(card) {
+            if (!card) return;
+            const rankText = card.rank === 'JOKER' ? '🃏' : card.rank;
+            const suitSymbols = {
+                'HEARTS': '♥️',
+                'DIAMONDS': '♦️',
+                'CLUBS': '♣️',
+                'SPADES': '♠️'
+            };
+            const suitText = suitSymbols[card.suit] || '';
+            document.getElementById('topDiscard').textContent = `${rankText}${suitText}`;
+        }
+        
+        function createGame() {
+            if (!socket) {
+                alert('Please connect first!');
+                return;
+            }
+            
+            log('Creating game...');
+            socket.emit('game:create', { preset: 'QUICK_2P' });
+        }
+        
+        function joinGame() {
+            if (!socket) {
+                alert('Please connect first!');
+                return;
+            }
+            
+            const gameId = document.getElementById('gameIdInput').value;
+            if (!gameId) {
+                alert('Please enter a Game ID');
+                return;
+            }
+            
+            log(`Joining game: ${gameId}...`);
+            socket.emit('game:join', {
+                gameId: gameId,
+                playerId: myPlayerId,
+                playerName: document.getElementById('playerName').value,
+                playerAvatar: `https://i.pravatar.cc/150?u=${myPlayerId}`
+            });
+        }
+        
+        function markReady() {
+            if (!currentGameId) {
+                alert('Join a game first!');
+                return;
+            }
+            
+            log('Marking ready...');
+            socket.emit('player:ready', { gameId: currentGameId });
+        }
+        
+        function startGame() {
+            if (!currentGameId) {
+                alert('Create a game first!');
+                return;
+            }
+            
+            log('Starting game...');
+            socket.emit('game:start', { gameId: currentGameId });
+        }
+        
+        function drawCard(fromDiscard) {
+            if (!currentGameId) {
+                alert('Join a game first!');
+                return;
+            }
+            
+            log(`Drawing card from ${fromDiscard ? 'discard' : 'deck'}...`);
+            socket.emit('game:draw', {
+                gameId: currentGameId,
+                fromDiscard: fromDiscard
+            });
+        }
+        
+        function discardSelected() {
+            if (!selectedCardId) {
+                alert('Please select a card first!');
+                return;
+            }
+            
+            if (!currentGameId) {
+                alert('Join a game first!');
+                return;
+            }
+            
+            log(`Discarding card: ${selectedCardId}...`);
+            socket.emit('game:discard', {
+                gameId: currentGameId,
+                cardId: selectedCardId
+            });
+            
+            selectedCardId = null;
+        }
+        
+        function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            if (!currentGameId) {
+                alert('Join a game first!');
+                return;
+            }
+            
+            socket.emit('player:message', {
+                gameId: currentGameId,
+                message: message
+            });
+            
+            input.value = '';
+        }
+        
+        function addChatMessage(playerName, message) {
+            const messagesDiv = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'chat-message';
+            
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'name';
+            nameSpan.textContent = playerName + ': ';
+            
+            const textSpan = document.createElement('span');
+            textSpan.textContent = message;
+            
+            messageDiv.appendChild(nameSpan);
+            messageDiv.appendChild(textSpan);
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        // Initial log
+        log('Ready to connect! Fill in your details and click Connect.', 'info');
+    </script>
+</body>
+</html>

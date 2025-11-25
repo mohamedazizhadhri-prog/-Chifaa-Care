@@ -1,0 +1,9 @@
+{
+  "name": "Rami",
+  "description": "Classic Rami card game for 2-4 players",
+  "default_orientation_lock_state": "unlocked",
+  "supported_platforms": ["desktop", "mobile"],
+  "content_security_policy": {
+    "connect-src": ["https://*.discord.com", "wss://*.discord.com"]
+  }
+}
