@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tunisian Rami Tester - With Lay-Off</title>
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .status.connected { background: #d4edda; color: #155724; }
+        .status.disconnected { background: #f8d7da; color: #721c24; }
+        
+        .setup-section, .game-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .game-section { display: none; }
+        .game-section.active { display: block; }
+        
+        .input-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            transition: all 0.3s;
+        }
+        
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .phase-indicator {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .phase-indicator strong {
+            color: #1976d2;
+            font-size: 18px;
+        }
+        
+        .cards-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+            min-height: 100px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 2px dashed #ddd;
+        }
+        
+        .card {
+            background: white;
+            border: 3px solid #667eea;
+            border-radius: 8px;
+            padding: 8px;
+            text-align: center;
+            cursor: move;
+            transition: all 0.2s;
+            min-height: 80px;
+            min-width: 70px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            user-select: none;
+            position: relative;
+        }
+        
+        .card:hover { transform: translateY(-5px); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+        .card.selected { background: #667eea; color: white; }
+        .card.highlighted { border-color: #ff6b6b; border-width: 4px; }
+        .card.dragging { opacity: 0.5; transform: rotate(5deg); }
+        .card.drag-over { border-color: #51cf66; border-style: solid; }
+        
+        .discard-preview {
+            background: #fff3cd;
+            border: 3px solid #ffc107;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .discard-preview h4 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+        
+        .discard-card {
+            background: white;
+            border: 3px solid #dc3545;
+            border-radius: 8px;
+            padding: 15px;
+            display: inline-block;
+            min-width: 100px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        .discard-card .card-rank {
+            font-size: 36px;
+            font-weight: bold;
+            color: #dc3545;
+        }
+        
+        .discard-card .card-suit {
+            font-size: 24px;
+        }
+        
+        .card-rank { font-size: 24px; font-weight: bold; }
+        .card-suit { font-size: 18px; }
+        
+        .melds-section {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .meld {
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            border: 2px solid #ffc107;
+        }
+
+        .meld.can-layoff {
+            border-color: #28a745;
+            background: #f0fff4;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .meld.can-layoff:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+        }
+
+        .meld.selected-for-layoff {
+            border-color: #007bff;
+            border-width: 3px;
+            background: #e3f2fd;
+        }
+
+        .layoff-indicator {
+            background: #28a745;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            display: inline-block;
+            margin-left: 10px;
+        }
+        
+        .meld-header {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #856404;
+        }
+        
+        .meld-cards {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .meld-card {
+            background: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 4px;
+            padding: 8px;
+            min-width: 60px;
+            text-align: center;
+        }
+        
+        .log {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 6px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        
+        .log-entry { margin-bottom: 5px; }
+        .log-entry.error { color: #ff6b6b; }
+        .log-entry.success { color: #51cf66; }
+        .log-entry.info { color: #74c0fc; }
+        
+        .scores-section {
+            background: #e8f5e9;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .score-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px;
+            border-bottom: 1px solid #c8e6c9;
+        }
+        
+        .selected-cards-preview {
+            background: #fff;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            min-height: 40px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎴 Tunisian Rami Tester (With Lay-Off Feature)</h1>
+        <div class="subtitle">Official Tunisian Rules: 2 Decks + 4 Jokers | 14 Cards | Draw→Meld→Lay Off→Discard</div>
+        
+        <div id="status" class="status disconnected">⚠️ Disconnected</div>
+        
+        <!-- Setup -->
+        <div id="setupSection" class="setup-section">
+            <h2>Setup Player</h2>
+            <div class="input-group">
+                <label>Server URL:</label>
+                <input type="text" id="serverUrl" value="http://localhost:3001">
+            </div>
+            <div class="input-group">
+                <label>Player ID:</label>
+                <input type="text" id="playerId" placeholder="player1">
+            </div>
+            <div class="input-group">
+                <label>Player Name:</label>
+                <input type="text" id="playerName" placeholder="Alice">
+            </div>
+            <button onclick="connectPlayer()">Connect & Authenticate</button>
+        </div>
+        
+        <!-- Game Actions -->
+        <div id="gameSection" class="game-section">
+            <h2>Game Lobby</h2>
+            <div style="margin-bottom: 20px;">
+                <button onclick="createGame()">Create New Game</button>
+                <button onclick="joinGame()">Join Game</button>
+                <button onclick="markReady()">Mark Ready</button>
+                <button onclick="startGame()">Start Game (Host)</button>
+            </div>
+            <div class="input-group">
+                <label>Game ID (for joining):</label>
+                <input type="text" id="gameIdInput" placeholder="Enter game ID">
+            </div>
+            
+            <!-- Phase Indicator -->
+            <div id="phaseIndicator" class="phase-indicator" style="display:none;">
+                <div><strong id="currentPhase">LOBBY</strong></div>
+                <div style="font-size: 14px; margin-top: 5px;">
+                    Turn: <span id="currentTurn">-</span> | 
+                    Deck: <span id="deckSize">-</span> | 
+                    Round: <span id="roundNumber">-</span>
+                </div>
+            </div>
+            
+            <!-- Discard Pile Preview -->
+            <div id="discardPreview" class="discard-preview" style="display:none;">
+                <h4>🗑️ Top Card of Discard Pile</h4>
+                <div id="discardCard" class="discard-card">
+                    <div class="card-rank">-</div>
+                    <div class="card-suit">-</div>
+                </div>
+            </div>
+            
+            <!-- Scores -->
+            <div id="scoresSection" class="scores-section" style="display:none;">
+                <h3>Scores</h3>
+                <div id="scoresList"></div>
+            </div>
+            
+            <!-- Turn Actions -->
+            <div id="turnActions" style="display:none;">
+                <h3>🎯 Your Turn - <span id="turnPhaseText">DRAW PHASE</span></h3>
+                <div id="drawActions" style="display:none;">
+                    <button onclick="drawCard(false)">Draw from Deck</button>
+                    <button onclick="drawCard(true)">Draw from Discard Pile</button>
+                    <p style="margin-top: 10px; color: #856404;">⚠️ If you draw from discard, you MUST use it in a meld!</p>
+                </div>
+                <div id="meldActions" style="display:none;">
+                    <h4>Meld Phase Actions:</h4>
+                    <div style="margin-bottom: 15px; padding: 10px; background: #e8f5e9; border-radius: 6px;">
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="radio" name="meldAction" value="createMeld" checked onchange="updateMeldMode()" style="margin-right: 8px;">
+                            <span style="font-weight: 600;">📝 Create New Meld</span>
+                        </label>
+                        <label style="display: flex; align-items: center; cursor: pointer; margin-top: 8px;">
+                            <input type="radio" name="meldAction" value="layoff" onchange="updateMeldMode()" style="margin-right: 8px;">
+                            <span style="font-weight: 600;">➕ Lay Off on Existing Meld</span>
+                        </label>
+                    </div>
+                    
+                    <div id="createMeldUI">
+                        <h4>Selected Cards for Meld:</h4>
+                        <div id="selectedCardsPreview" class="selected-cards-preview"></div>
+                        <button onclick="createMeld()">Create Meld with Selected Cards</button>
+                        <button onclick="clearSelection()">Clear Selection</button>
+                        <p style="margin-top: 10px; color: #28a745; font-weight: 600;">✨ You can create multiple melds!</p>
+                    </div>
+                    
+                    <div id="layoffUI" style="display:none;">
+                        <p style="color: #28a745; font-weight: 600; margin-bottom: 10px;">📌 Click a card in your hand, then click a meld below to lay it off</p>
+                        <div id="selectedCardForLayoff" class="selected-cards-preview"></div>
+                        <button onclick="cancelLayoff()">Cancel Lay Off</button>
+                    </div>
+                    
+                    <button onclick="finishMelding()" style="margin-top: 15px; background: #ff9800;">Finish Melding (Move to Discard)</button>
+                </div>
+                <div id="discardActions" style="display:none;">
+                    <h4>💳 Click a card in your hand to discard it</h4>
+                    <p style="color: #856404; margin-top: 10px;">⚠️ This card will be visible to all opponents!</p>
+                </div>
+            </div>
+            
+            <!-- Player's Hand -->
+            <div id="handSection" style="display:none;">
+                <h3>Your Hand (<span id="handCount">0</span> cards)</h3>
+                <div id="hand" class="cards-grid"></div>
+            </div>
+            
+            <!-- All Melds -->
+            <div id="meldsSection" class="melds-section" style="display:none;">
+                <h3>All Melds on Table</h3>
+                <div id="allMelds"></div>
+            </div>
+        </div>
+        
+        <!-- Log -->
+        <div>
+            <h3>Console Log</h3>
+            <div id="log" class="log"></div>
+        </div>
+    </div>
+    
+    <script src="./test-rami-client-logic.js"></script>
+</body>
+</html>

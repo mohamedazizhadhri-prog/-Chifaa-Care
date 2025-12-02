@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tunisian Rami Tester</title>
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .status.connected { background: #d4edda; color: #155724; }
+        .status.disconnected { background: #f8d7da; color: #721c24; }
+        
+        .setup-section, .game-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .game-section { display: none; }
+        .game-section.active { display: block; }
+        
+        .input-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            transition: all 0.3s;
+        }
+        
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .phase-indicator {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .phase-indicator strong {
+            color: #1976d2;
+            font-size: 18px;
+        }
+        
+        .cards-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+            min-height: 100px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 2px dashed #ddd;
+        }
+        
+        .card {
+            background: white;
+            border: 3px solid #667eea;
+            border-radius: 8px;
+            padding: 8px;
+            text-align: center;
+            cursor: move;
+            transition: all 0.2s;
+            min-height: 80px;
+            min-width: 70px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            user-select: none;
+            position: relative;
+        }
+        
+        .card:hover { transform: translateY(-5px); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+        .card.selected { background: #667eea; color: white; }
+        .card.highlighted { border-color: #ff6b6b; border-width: 4px; }
+        .card.dragging { opacity: 0.5; transform: rotate(5deg); }
+        .card.drag-over { border-color: #51cf66; border-style: solid; }
+        
+        .discard-preview {
+            background: #fff3cd;
+            border: 3px solid #ffc107;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .discard-preview h4 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+        
+        .discard-card {
+            background: white;
+            border: 3px solid #dc3545;
+            border-radius: 8px;
+            padding: 15px;
+            display: inline-block;
+            min-width: 100px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        .discard-card .card-rank {
+            font-size: 36px;
+            font-weight: bold;
+            color: #dc3545;
+        }
+        
+        .discard-card .card-suit {
+            font-size: 24px;
+        }
+        
+        .card-rank { font-size: 24px; font-weight: bold; }
+        .card-suit { font-size: 18px; }
+        
+        .melds-section {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .meld {
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            border: 2px solid #ffc107;
+        }
+        
+        .meld-header {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #856404;
+        }
+        
+        .meld-cards {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .meld-card {
+            background: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 4px;
+            padding: 8px;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .meld.can-layoff {
+            border-color: #28a745;
+            background: #f0fff4;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .meld.can-layoff:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+        }
+
+        .meld.selected-for-layoff {
+            border-color: #007bff;
+            border-width: 3px;
+            background: #e3f2fd;
+        }
+
+        .layoff-indicator {
+            background: #28a745;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            display: inline-block;
+            margin-left: 10px;
+        }
+        
+        .log {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 6px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        
+        .log-entry { margin-bottom: 5px; }
+        .log-entry.error { color: #ff6b6b; }
+        .log-entry.success { color: #51cf66; }
+        .log-entry.info { color: #74c0fc; }
+        
+        .scores-section {
+            background: #e8f5e9;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .score-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px;
+            border-bottom: 1px solid #c8e6c9;
+        }
+        
+        .selected-cards-preview {
+            background: #fff;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            min-height: 40px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎴 Tunisian Rami Tester</h1>
+        <div class="subtitle">Official Tunisian Rules: 2 Decks + 2 Jokers | 13 Cards | Draw→Meld→Discard</div>
+        
+        <div id="status" class="status disconnected">⚠️ Disconnected</div>
+        
+        <!-- Setup -->
+        <div id="setupSection" class="setup-section">
+            <h2>Setup Player</h2>
+            <div class="input-group">
+                <label>Server URL:</label>
+                <input type="text" id="serverUrl" value="http://localhost:3001">
+            </div>
+            <div class="input-group">
+                <label>Player ID:</label>
+                <input type="text" id="playerId" placeholder="player1">
+            </div>
+            <div class="input-group">
+                <label>Player Name:</label>
+                <input type="text" id="playerName" placeholder="Alice">
+            </div>
+            <button onclick="connectPlayer()">Connect & Authenticate</button>
+        </div>
+        
+        <!-- Game Actions -->
+        <div id="gameSection" class="game-section">
+            <h2>Game Lobby</h2>
+            <div style="margin-bottom: 20px;">
+                <button onclick="createGame()">Create New Game</button>
+                <button onclick="joinGame()">Join Game</button>
+                <button onclick="markReady()">Mark Ready</button>
+                <button onclick="startGame()">Start Game (Host)</button>
+            </div>
+            <div class="input-group">
+                <label>Game ID (for joining):</label>
+                <input type="text" id="gameIdInput" placeholder="Enter game ID">
+            </div>
+            
+            <!-- Phase Indicator -->
+            <div id="phaseIndicator" class="phase-indicator" style="display:none;">
+                <div><strong id="currentPhase">LOBBY</strong></div>
+                <div style="font-size: 14px; margin-top: 5px;">
+                    Turn: <span id="currentTurn">-</span> | 
+                    Deck: <span id="deckSize">-</span> | 
+                    Round: <span id="roundNumber">-</span>
+                </div>
+            </div>
+            
+            <!-- Discard Pile Preview -->
+            <div id="discardPreview" class="discard-preview" style="display:none;">
+                <h4>🗑️ Top Card of Discard Pile</h4>
+                <div id="discardCard" class="discard-card">
+                    <div class="card-rank">-</div>
+                    <div class="card-suit">-</div>
+                </div>
+            </div>
+            
+            <!-- Scores -->
+            <div id="scoresSection" class="scores-section" style="display:none;">
+                <h3>Scores</h3>
+                <div id="scoresList"></div>
+            </div>
+            
+            <!-- Turn Actions -->
+            <div id="turnActions" style="display:none;">
+                <h3>🎯 Your Turn - <span id="turnPhaseText">DRAW PHASE</span></h3>
+                <div id="drawActions" style="display:none;">
+                    <button onclick="drawCard(false)">Draw from Deck</button>
+                    <button onclick="drawCard(true)">Draw from Discard Pile</button>
+                    <p style="margin-top: 10px; color: #856404;">⚠️ If you draw from discard, you MUST use it in a meld!</p>
+                </div>
+                <div id="meldActions" style="display:none;">
+                    <h4>Meld Phase Actions:</h4>
+                    <div style="margin-bottom: 15px; padding: 10px; background: #e8f5e9; border-radius: 6px;">
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="radio" name="meldAction" value="createMeld" checked onchange="updateMeldMode()" style="margin-right: 8px;">
+                            <span style="font-weight: 600;">📝 Create New Meld</span>
+                        </label>
+                        <label style="display: flex; align-items: center; cursor: pointer; margin-top: 8px;">
+                            <input type="radio" name="meldAction" value="layoff" onchange="updateMeldMode()" style="margin-right: 8px;">
+                            <span style="font-weight: 600;">➕ Lay Off on Existing Meld</span>
+                        </label>
+                    </div>
+                    
+                    <div id="createMeldUI">
+                        <h4>Selected Cards for Meld:</h4>
+                        <div id="selectedCardsPreview" class="selected-cards-preview"></div>
+                        <button onclick="createMeld()">Create Meld with Selected Cards</button>
+                        <button onclick="clearSelection()">Clear Selection</button>
+                        <p style="margin-top: 10px; color: #28a745; font-weight: 600;">✨ You can create multiple melds!</p>
+                    </div>
+                    
+                    <div id="layoffUI" style="display:none;">
+                        <p style="color: #28a745; font-weight: 600; margin-bottom: 10px;">📌 Click a card in your hand, then click a meld below to lay it off</p>
+                        <div id="selectedCardForLayoff" class="selected-cards-preview"></div>
+                        <button onclick="cancelLayoff()">Cancel Lay Off</button>
+                    </div>
+                    
+                    <button onclick="finishMelding()" style="margin-top: 15px; background: #ff9800;">Finish Melding (Move to Discard)</button>
+                </div>
+                <div id="discardActions" style="display:none;">
+                    <h4>💳 Click a card in your hand to discard it</h4>
+                    <p style="color: #856404; margin-top: 10px;">⚠️ This card will be visible to all opponents!</p>
+                </div>
+            </div>
+            
+            <!-- Player's Hand -->
+            <div id="handSection" style="display:none;">
+                <h3>Your Hand (<span id="handCount">0</span> cards)</h3>
+                <div id="hand" class="cards-grid"></div>
+            </div>
+            
+            <!-- All Melds -->
+            <div id="meldsSection" class="melds-section" style="display:none;">
+                <h3>All Melds on Table</h3>
+                <div id="allMelds"></div>
+            </div>
+        </div>
+        
+        <!-- Log -->
+        <div>
+            <h3>Console Log</h3>
+            <div id="log" class="log"></div>
+        </div>
+    </div>
+    
+    <script>
+        let socket = null;
+        let currentGameId = null;
+        let myPlayerId = null;
+        let myHand = [];
+        let selectedCardIds = [];
+        let drewFromDiscard = false;
+        let drawnCardId = null;
+        let currentPhase = 'lobby';
+        let allMelds = [];
+        let draggedCardId = null;
+        let cardOrder = {}; // Store card order: {cardId: position}
+        let inDiscardPhase = false;
+        
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            const timestamp = new Date().toLocaleTimeString();
+            entry.textContent = `[${timestamp}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        function updateStatus(connected) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = connected ? 'status connected' : 'status disconnected';
+            statusDiv.textContent = connected ? '✅ Connected & Authenticated' : '⚠️ Disconnected';
+        }
+        
+        function connectPlayer() {
+            const serverUrl = document.getElementById('serverUrl').value;
+            const playerId = document.getElementById('playerId').value;
+            const playerName = document.getElementById('playerName').value;
+            
+            if (!playerId || !playerName) {
+                alert('Please enter Player ID and Name');
+                return;
+            }
+            
+            myPlayerId = playerId;
+            log(`Connecting to ${serverUrl}...`);
+            socket = io(serverUrl);
+            
+            socket.on('connect', () => {
+                log('Socket connected!', 'success');
+                socket.emit('authenticate', {
+                    playerId,
+                    playerName,
+                    playerAvatar: `https://i.pravatar.cc/150?u=${playerId}`
+                });
+            });
+            
+            socket.on('authenticated', () => {
+                log('✅ Authenticated successfully!', 'success');
+                updateStatus(true);
+                document.getElementById('gameSection').classList.add('active');
+            });
+            
+            socket.on('disconnect', () => {
+                log('Disconnected', 'error');
+                updateStatus(false);
+            });
+            
+            setupGameListeners();
+        }
+        
+        function setupGameListeners() {
+            socket.on('game:created', ({ gameId, game }) => {
+                log(`✅ Game created! ID: ${gameId}`, 'success');
+                currentGameId = gameId;
+                document.getElementById('gameIdInput').value = gameId;
+            });
+            
+            socket.on('game:joined', ({ game }) => {
+                log('✅ Joined game!', 'success');
+                currentGameId = game.id;
+            });
+            
+            socket.on('game:player_joined', ({ player }) => {
+                log(`👤 ${player.name} joined the game`);
+            });
+            
+            socket.on('player:all_ready', () => {
+                log('✅ All players ready! Host can start the game.', 'success');
+            });
+            
+            socket.on('game:started', (data) => {
+                log('🎮 GAME STARTED!', 'success');
+                currentPhase = data.phase;
+                // Initialize card order for new game
+                initializeCardOrder(data.myHand);
+                updateGameState(data);
+                document.getElementById('phaseIndicator').style.display = 'block';
+                document.getElementById('handSection').style.display = 'block';
+                document.getElementById('meldsSection').style.display = 'block';
+                document.getElementById('scoresSection').style.display = 'block';
+                document.getElementById('discardPreview').style.display = 'block';
+                updateDiscardPile(data.discardPile);
+            });
+            
+            socket.on('game:card_drawn', (data) => {
+                if (data.myHand) {
+                    // Update hand while preserving order of existing cards
+                    updateHandWithNewCard(data.myHand, data.card);
+                    currentPhase = data.phase;
+                    log(`🎴 You drew a card ${data.fromDiscard ? 'from discard pile' : 'from deck'}`, 'success');
+                    if (data.fromDiscard) {
+                        drewFromDiscard = true;
+                        drawnCardId = data.card.id;
+                        log('⚠️ You MUST use this card in a meld!', 'info');
+                    }
+                    document.getElementById('drawActions').style.display = 'none';
+                    document.getElementById('meldActions').style.display = 'block';
+                    document.getElementById('discardActions').style.display = 'none';
+                    document.getElementById('turnPhaseText').textContent = 'MELD PHASE (Optional - Can create multiple melds)';
+                    inDiscardPhase = false;
+                } else {
+                    log(`🎴 ${data.player.name} drew a card`);
+                    if (data.discardPile) {
+                        updateDiscardPile(data.discardPile);
+                    }
+                }
+                updatePhaseDisplay();
+            });
+            
+            socket.on('game:meld_created', (data) => {
+                log(`✨ ${data.player.name} created a ${data.meld.type} meld!`);
+                if (data.myHand) {
+                    // Remove melded cards from order tracking
+                    const meldedIds = data.meld.cards.map(c => c.id);
+                    meldedIds.forEach(id => delete cardOrder[id]);
+                    myHand = data.myHand;
+                    updateHand();
+                    
+                    // Clear selection after creating meld
+                    selectedCardIds = [];
+                    updateSelectedCardsPreview();
+                    
+                    // Stay in meld phase to allow creating more melds
+                    if (data.player.id === myPlayerId) {
+                        log('✨ Meld created! You can create another meld or click "Finish Melding".', 'success');
+                    }
+                }
+                if (data.allMelds) {
+                    allMelds = data.allMelds;
+                    updateMeldsDisplay();
+                }
+            });
+            
+            socket.on('game:card_discarded', (data) => {
+                if (data.discardedCard) {
+                    log(`🗑️ ${data.player.name} discarded ${data.discardedCard.rank} of ${data.discardedCard.suit || 'JOKER'}`);
+                } else {
+                    log(`🗑️ ${data.player.name} discarded a card`);
+                }
+                if (data.myHand) {
+                    // Remove discarded card from order
+                    if (data.discardedCard) {
+                        delete cardOrder[data.discardedCard.id];
+                    }
+                    myHand = data.myHand;
+                    updateHand();
+                }
+                if (data.discardPile) {
+                    updateDiscardPile(data.discardPile);
+                }
+                currentPhase = data.phase;
+                updatePhaseDisplay();
+                checkIfMyTurn(data.currentPlayer.id);
+                inDiscardPhase = false;
+            });
+            
+            socket.on('game:round_end', (data) => {
+                log(`🏆 Round ${data.nextRound - 1} ended! Winner: ${data.winnerName}`, 'success');
+                log(`Scores this round:`, 'info');
+                data.totalScores.forEach(s => {
+                    log(`  ${s.name}: ${s.roundScore > 0 ? '+' : ''}${s.roundScore} (Total: ${s.totalScore})`);
+                });
+                updateScores(data.totalScores);
+            });
+            
+            socket.on('game:over', (data) => {
+                log(`🎉 GAME OVER! Winner: ${data.winner.name} with ${data.winner.totalScore} points!`, 'success');
+                log('Final scores:', 'info');
+                data.finalScores.forEach(s => {
+                    log(`  ${s.name}: ${s.totalScore} points`);
+                });
+            });
+            
+            socket.on('game:error', (err) => {
+                log(`❌ ${err.message}`, 'error');
+            });
+        }
+        
+        function updateGameState(data) {
+            document.getElementById('currentTurn').textContent = data.currentPlayer.name;
+            document.getElementById('deckSize').textContent = data.deckSize;
+            document.getElementById('roundNumber').textContent = data.roundNumber;
+            document.getElementById('currentPhase').textContent = data.phase.toUpperCase();
+            
+            myHand = data.myHand || [];
+            updateHand();
+            
+            if (data.allMelds) {
+                allMelds = data.allMelds;
+                updateMeldsDisplay();
+            }
+            
+            if (data.players) {
+                updateScores(data.players.map(p => ({
+                    name: p.name,
+                    totalScore: p.totalScore
+                })));
+            }
+            
+            checkIfMyTurn(data.currentPlayer.id);
+        }
+        
+        function checkIfMyTurn(currentPlayerId) {
+            if (currentPlayerId === myPlayerId) {
+                document.getElementById('turnActions').style.display = 'block';
+                if (currentPhase === 'draw') {
+                    document.getElementById('drawActions').style.display = 'block';
+                    document.getElementById('meldActions').style.display = 'none';
+                    document.getElementById('discardActions').style.display = 'none';
+                    document.getElementById('turnPhaseText').textContent = 'DRAW PHASE';
+                    inDiscardPhase = false;
+                    log('🎯 YOUR TURN! Draw a card to start.', 'success');
+                }
+            } else {
+                document.getElementById('turnActions').style.display = 'none';
+            }
+        }
+        
+        function updatePhaseDisplay() {
+            document.getElementById('currentPhase').textContent = currentPhase.toUpperCase();
+            if (currentPhase === 'draw') {
+                document.getElementById('deckSize').textContent = document.getElementById('deckSize').textContent;
+            }
+        }
+        
+        function updateHand() {
+            const handDiv = document.getElementById('hand');
+            handDiv.innerHTML = '';
+            document.getElementById('handCount').textContent = myHand.length;
+            
+            // Sort hand by stored order
+            const sortedHand = sortHandByOrder();
+            
+            sortedHand.forEach((card, index) => {
+                const cardDiv = createCardElement(card, () => handleCardClick(card.id));
+                if (selectedCardIds.includes(card.id)) {
+                    cardDiv.classList.add('selected');
+                }
+                if (drewFromDiscard && card.id === drawnCardId) {
+                    cardDiv.classList.add('highlighted');
+                }
+                
+                // Add drag and drop functionality
+                cardDiv.draggable = true;
+                cardDiv.setAttribute('data-card-id', card.id);
+                cardDiv.setAttribute('data-card-index', index);
+                
+                cardDiv.addEventListener('dragstart', handleDragStart);
+                cardDiv.addEventListener('dragend', handleDragEnd);
+                cardDiv.addEventListener('dragover', handleDragOver);
+                cardDiv.addEventListener('drop', handleDrop);
+                cardDiv.addEventListener('dragenter', handleDragEnter);
+                cardDiv.addEventListener('dragleave', handleDragLeave);
+                
+                handDiv.appendChild(cardDiv);
+            });
+            
+            updateSelectedCardsPreview();
+        }
+        
+        function sortHandByOrder() {
+            // Create a copy of hand and sort by stored order
+            return [...myHand].sort((a, b) => {
+                const orderA = cardOrder[a.id] !== undefined ? cardOrder[a.id] : 9999;
+                const orderB = cardOrder[b.id] !== undefined ? cardOrder[b.id] : 9999;
+                return orderA - orderB;
+            });
+        }
+        
+        function handleCardClick(cardId) {
+            if (inDiscardPhase) {
+                // Discard this card
+                discardCard(cardId);
+            } else {
+                // Select for meld
+                toggleCardSelection(cardId);
+            }
+        }
+        
+        function createCardElement(card, onClick) {
+            const div = document.createElement('div');
+            div.className = 'card';
+            div.onclick = onClick;
+            
+            const rank = document.createElement('div');
+            rank.className = 'card-rank';
+            rank.textContent = card.rank === 'JOKER' ? '🃏' : card.rank;
+            
+            const suit = document.createElement('div');
+            suit.className = 'card-suit';
+            const suitSymbols = { HEARTS: '♥️', DIAMONDS: '♦️', CLUBS: '♣️', SPADES: '♠️' };
+            suit.textContent = suitSymbols[card.suit] || '';
+            
+            div.appendChild(rank);
+            div.appendChild(suit);
+            return div;
+        }
+        
+        function toggleCardSelection(cardId) {
+            if (currentPhase !== 'meld') return;
+            
+            const index = selectedCardIds.indexOf(cardId);
+            if (index > -1) {
+                selectedCardIds.splice(index, 1);
+            } else {
+                selectedCardIds.push(cardId);
+            }
+            updateHand();
+        }
+        
+        function updateSelectedCardsPreview() {
+            const preview = document.getElementById('selectedCardsPreview');
+            if (selectedCardIds.length === 0) {
+                preview.textContent = 'No cards selected. Click cards in your hand to select them.';
+            } else {
+                const selected = myHand.filter(c => selectedCardIds.includes(c.id));
+                preview.textContent = selected.map(c => 
+                    `${c.rank}${c.suit ? ' of ' + c.suit : ''}`
+                ).join(', ');
+            }
+        }
+        
+        function updateMeldsDisplay() {
+            const meldsDiv = document.getElementById('allMelds');
+            meldsDiv.innerHTML = '';
+            
+            if (allMelds.length === 0) {
+                meldsDiv.textContent = 'No melds yet';
+                return;
+            }
+            
+            allMelds.forEach(meld => {
+                const meldDiv = document.createElement('div');
+                meldDiv.className = 'meld';
+                
+                const header = document.createElement('div');
+                header.className = 'meld-header';
+                header.textContent = `${meld.playerName}'s ${meld.type}`;
+                meldDiv.appendChild(header);
+                
+                const cardsDiv = document.createElement('div');
+                cardsDiv.className = 'meld-cards';
+                meld.cards.forEach(card => {
+                    const cardDiv = document.createElement('div');
+                    cardDiv.className = 'meld-card';
+                    cardDiv.textContent = `${card.rank}${card.suit ? '\n' : ''}${card.suit || ''}`;
+                    cardsDiv.appendChild(cardDiv);
+                });
+                meldDiv.appendChild(cardsDiv);
+                meldsDiv.appendChild(meldDiv);
+            });
+        }
+        
+        function updateDiscardPile(discardPile) {
+            if (!discardPile || discardPile.length === 0) {
+                document.getElementById('discardPreview').style.display = 'none';
+                return;
+            }
+            
+            document.getElementById('discardPreview').style.display = 'block';
+            const topCard = discardPile[discardPile.length - 1];
+            
+            const rankDiv = document.querySelector('#discardCard .card-rank');
+            const suitDiv = document.querySelector('#discardCard .card-suit');
+            
+            if (topCard.rank === 'JOKER') {
+                rankDiv.textContent = '🎃';
+                suitDiv.textContent = 'JOKER';
+            } else {
+                rankDiv.textContent = topCard.rank;
+                const suitSymbols = { HEARTS: '♥️', DIAMONDS: '♦️', CLUBS: '♣️', SPADES: '♠️' };
+                suitDiv.textContent = suitSymbols[topCard.suit] || topCard.suit;
+            }
+        }
+        
+        function updateScores(scores) {
+            const scoresDiv = document.getElementById('scoresList');
+            scoresDiv.innerHTML = '';
+            scores.forEach(s => {
+                const row = document.createElement('div');
+                row.className = 'score-row';
+                row.innerHTML = `<span>${s.name}</span><span><strong>${s.totalScore}</strong> points</span>`;
+                scoresDiv.appendChild(row);
+            });
+        }
+        
+        function createGame() {
+            if (!socket) { alert('Please connect first!'); return; }
+            log('Creating game...');
+            socket.emit('game:create', {});
+        }
+        
+        function joinGame() {
+            const gameId = document.getElementById('gameIdInput').value;
+            if (!gameId) { alert('Enter Game ID'); return; }
+            log(`Joining game: ${gameId}...`);
+            socket.emit('game:join', {
+                gameId,
+                playerId: myPlayerId,
+                playerName: document.getElementById('playerName').value,
+                playerAvatar: `https://i.pravatar.cc/150?u=${myPlayerId}`
+            });
+        }
+        
+        function markReady() {
+            if (!currentGameId) { alert('Join a game first!'); return; }
+            log('Marking ready...');
+            socket.emit('player:ready', { gameId: currentGameId });
+        }
+        
+        function startGame() {
+            if (!currentGameId) { alert('Create a game first!'); return; }
+            log('Starting game...');
+            socket.emit('game:start', { gameId: currentGameId });
+        }
+        
+        function drawCard(fromDiscard) {
+            log(`Drawing from ${fromDiscard ? 'discard pile' : 'deck'}...`);
+            socket.emit('game:draw', { gameId: currentGameId, fromDiscard });
+        }
+        
+        function createMeld() {
+            if (selectedCardIds.length < 3) {
+                alert('Select at least 3 cards for a meld');
+                return;
+            }
+            
+            if (drewFromDiscard && !selectedCardIds.includes(drawnCardId)) {
+                alert('You drew from discard pile - you MUST use that card in this meld!');
+                return;
+            }
+            
+            log('Creating meld...');
+            socket.emit('game:create_meld', {
+                gameId: currentGameId,
+                cardIds: selectedCardIds
+            });
+            
+            selectedCardIds = [];
+            drewFromDiscard = false;
+            drawnCardId = null;
+            
+            // After creating meld, go to discard phase
+            setTimeout(() => {
+                log('Meld created! Now click a card to discard.');
+                document.getElementById('meldActions').style.display = 'none';
+                document.getElementById('discardActions').style.display = 'block';
+                document.getElementById('turnPhaseText').textContent = 'DISCARD PHASE';
+                inDiscardPhase = true;
+            }, 500);
+        }
+        
+        function clearSelection() {
+            selectedCardIds = [];
+            updateHand();
+        }
+        
+        // Drag and Drop handlers
+        function handleDragStart(e) {
+            draggedCardId = e.target.getAttribute('data-card-id');
+            e.target.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', e.target.innerHTML);
+        }
+        
+        function handleDragEnd(e) {
+            e.target.classList.remove('dragging');
+            // Remove all drag-over classes
+            document.querySelectorAll('.card').forEach(card => {
+                card.classList.remove('drag-over');
+            });
+        }
+        
+        function handleDragOver(e) {
+            if (e.preventDefault) {
+                e.preventDefault();
+            }
+            e.dataTransfer.dropEffect = 'move';
+            return false;
+        }
+        
+        function handleDragEnter(e) {
+            if (e.target.classList.contains('card')) {
+                e.target.classList.add('drag-over');
+            }
+        }
+        
+        function handleDragLeave(e) {
+            if (e.target.classList.contains('card')) {
+                e.target.classList.remove('drag-over');
+            }
+        }
+        
+        function handleDrop(e) {
+            if (e.stopPropagation) {
+                e.stopPropagation();
+            }
+            
+            const targetCardId = e.target.closest('.card')?.getAttribute('data-card-id');
+            
+            if (draggedCardId && targetCardId && draggedCardId !== targetCardId) {
+                const sortedHand = sortHandByOrder();
+                const draggedIndex = sortedHand.findIndex(c => c.id === draggedCardId);
+                const targetIndex = sortedHand.findIndex(c => c.id === targetCardId);
+                
+                if (draggedIndex !== -1 && targetIndex !== -1) {
+                    // Update order for all cards
+                    const newOrder = [...sortedHand];
+                    const draggedCard = newOrder[draggedIndex];
+                    newOrder.splice(draggedIndex, 1);
+                    newOrder.splice(targetIndex, 0, draggedCard);
+                    
+                    // Save new positions
+                    newOrder.forEach((card, index) => {
+                        cardOrder[card.id] = index;
+                    });
+                    
+                    // Update the display
+                    updateHand();
+                    log('✓ Cards reordered', 'info');
+                }
+            }
+            
+            return false;
+        }
+        
+        function initializeCardOrder(hand) {
+            cardOrder = {};
+            if (hand) {
+                hand.forEach((card, index) => {
+                    cardOrder[card.id] = index;
+                });
+            }
+        }
+        
+        function updateHandWithNewCard(newHand, drawnCard) {
+            // Add new card to the end of the order
+            const maxOrder = Math.max(...Object.values(cardOrder), -1);
+            if (drawnCard) {
+                cardOrder[drawnCard.id] = maxOrder + 1;
+            }
+            myHand = newHand;
+            updateHand();
+        }
+        
+        function createMeld() {
+            if (selectedCardIds.length < 3) {
+                alert('Select at least 3 cards for a meld');
+                return;
+            }
+            
+            if (drewFromDiscard && !selectedCardIds.includes(drawnCardId)) {
+                alert('You drew from discard pile - you MUST use that card in this meld!');
+                return;
+            }
+            
+            log('Creating meld...');
+            socket.emit('game:create_meld', {
+                gameId: currentGameId,
+                cardIds: selectedCardIds
+            });
+            
+            // Note: We stay in meld phase to allow creating more melds
+            // drewFromDiscard and drawnCardId are cleared after first meld
+            if (drewFromDiscard) {
+                drewFromDiscard = false;
+                drawnCardId = null;
+            }
+        }
+        
+        function finishMelding() {
+            log('Finished melding. Click a card to discard it.');
+            document.getElementById('meldActions').style.display = 'none';
+            document.getElementById('discardActions').style.display = 'block';
+            document.getElementById('turnPhaseText').textContent = 'DISCARD PHASE';
+            inDiscardPhase = true;
+            selectedCardIds = [];
+            drewFromDiscard = false;
+            drawnCardId = null;
+            updateHand();
+        }
+        
+        function discardCard(cardId) {
+            if (!inDiscardPhase) return;
+            
+            const card = myHand.find(c => c.id === cardId);
+            if (!card) return;
+            
+            log(`Discarding ${card.rank} of ${card.suit || 'JOKER'}...`);
+            socket.emit('game:discard', { gameId: currentGameId, cardId });
+            drewFromDiscard = false;
+            drawnCardId = null;
+            inDiscardPhase = false;
+        }
+        
+        log('Ready to connect! Fill in your details and click Connect.', 'info');
+    </script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+# Build script for creating executable
+# Install PyInstaller first: pip install pyinstaller
+
+# Basic build command:
+# pyinstaller --onefile --name=Ramix main.py
+
+# Build with custom icon (if you have an icon file):
+# pyinstaller --onefile --name=Ramix --icon=icon.ico main.py
+
+# Build without console window (for GUI apps):
+# pyinstaller --onefile --windowed --name=Ramix main.py
